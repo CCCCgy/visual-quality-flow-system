@@ -1,0 +1,64 @@
+{
+  "source_type": "YOLO_JSON",
+  "model": {
+    "name": "surface-defect-yolo",
+    "version": "demo-v1.0",
+    "weights": "not-stored-in-demo"
+  },
+  "batch": {
+    "batch_no": "BATCH-DEMO-20260705-001",
+    "product_code": "PROD-DEMO-PANEL",
+    "product_name": "Demo Surface Panel"
+  },
+  "task": {
+    "task_no": "TASK-DEMO-20260705-001"
+  },
+  "images": [
+    {
+      "image_name": "demo-panel-001.jpg",
+      "image_uri": "sample-data/images/demo-panel-001.jpg",
+      "width": 1280,
+      "height": 960,
+      "detections": [
+        {
+          "defect_type": "scratch",
+          "confidence": 0.93215,
+          "bbox": {
+            "x": 246.40,
+            "y": 188.20,
+            "w": 142.80,
+            "h": 36.50
+          }
+        },
+        {
+          "defect_type": "stain",
+          "confidence": 0.81730,
+          "bbox": {
+            "x": 806.10,
+            "y": 512.90,
+            "w": 95.00,
+            "h": 88.40
+          }
+        }
+      ]
+    },
+    {
+      "image_name": "demo-panel-002.jpg",
+      "image_uri": "sample-data/images/demo-panel-002.jpg",
+      "width": 1280,
+      "height": 960,
+      "detections": [
+        {
+          "defect_type": "dent",
+          "confidence": 0.76480,
+          "bbox": {
+            "x": 533.00,
+            "y": 276.70,
+            "w": 61.50,
+            "h": 58.20
+          }
+        }
+      ]
+    }
+  ]
+}
