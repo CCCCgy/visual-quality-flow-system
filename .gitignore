@@ -1,0 +1,43 @@
+# Java / Spring Boot
+target/
+*.class
+*.jar
+*.war
+*.log
+
+# Node / Vue
+node_modules/
+dist/
+.vite/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Environment
+.env
+.env.*
+application-local.yml
+application-dev.yml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploaded files / local data
+uploads/
+local-storage/
+*.zip
+*.rar
+*.7z
+
+# Sensitive or large files
+*.pt
+*.pth
+*.onnx
+*.engine
+datasets/
+weights/
+runs/
+paper/
