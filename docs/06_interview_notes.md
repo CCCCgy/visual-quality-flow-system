@@ -43,3 +43,29 @@
 5. CLOSED 和 CANCELLED 状态的任务不能切换回其他状态。
 
 该模块体现了业务对象之间的关联校验：检测任务不能脱离生产批次单独存在。
+
+
+## detection_result 检测结果导入模块
+
+本模块用于将 YOLO 推理输出的 JSON 转换为系统中的业务数据。
+
+核心流程：
+
+YOLO JSON
+→ DetectionController
+→ DetectionImportService
+→ InspectionImageMapper
+→ DetectionResultMapper
+→ inspection_image / detection_result 表
+
+核心业务规则：
+
+1. 只有存在的检测任务才能导入检测结果。
+2. CLOSED / CANCELLED 状态的检测任务不允许继续导入。
+3. 导入时根据 sourceName 创建或关联 inspection_image。
+4. 每个 box 映射为一条 detection_result。
+5. bbox_xyxy 会被拆分为 bbox_x1、bbox_y1、bbox_x2、bbox_y2。
+6. 检测结果默认状态为 PENDING_REVIEW。
+7. 导入完成后，检测任务状态变为 WAIT_REVIEW。
+
+这个模块体现了 AI 模型输出到业务数据库的转换过程，是本系统与 YOLO 检测项目的衔接点。
