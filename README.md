@@ -32,6 +32,8 @@ YOLO 等视觉检测模型可以输出缺陷类别、置信度和检测框坐标
 
 ## 技术栈
 
+后端：
+
 - Java 21
 - Spring Boot 3
 - MyBatis-Plus
@@ -39,6 +41,14 @@ YOLO 等视觉检测模型可以输出缺陷类别、置信度和检测框坐标
 - Knife4j / Swagger
 - Maven
 - Lombok
+
+前端：
+
+- Vue 3
+- Vite
+- Element Plus
+- Vue Router
+- Axios
 
 ## 已完成功能模块
 
@@ -49,10 +59,13 @@ YOLO 等视觉检测模型可以输出缺陷类别、置信度和检测框坐标
 - 人工复核：对检测结果确认缺陷、标记误检或要求复检。
 - NCR：基于确认缺陷的复核记录创建不合格记录，并更新批次状态。
 - CAPA：基于 OPEN NCR 创建整改闭环，支持更新、验证、关闭和同步关闭批次。
+- 前端页面：Dashboard、批次、检测任务、检测结果、人工复核、NCR、CAPA 主链路页面。
 
 ## 快速启动
 
-进入后端目录并通过环境变量传入本地 MySQL 密码：
+### 后端启动
+
+进入后端目录，并通过环境变量传入本地 MySQL 密码：
 
 ```bat
 cd /d D:\Project_Portfolio\visual-quality-flow-system\backend
@@ -62,13 +75,48 @@ mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
 
 说明：真实项目中数据库密码不应写入配置文件或提交到代码仓库。本项目的 `application.yml` 使用 `MYSQL_USERNAME` / `MYSQL_PASSWORD` 环境变量读取数据库账号密码。
 
-## 接口文档地址
+### 前端启动
 
-启动后访问：
+进入前端目录，安装依赖并启动 Vite：
+
+```bat
+cd /d D:\Project_Portfolio\visual-quality-flow-system\frontend
+npm.cmd install
+npm.cmd run dev
+```
+
+前端默认访问地址：
+
+```text
+http://localhost:5173
+```
+
+前端通过 Vite 代理访问后端：
+
+```text
+/api -> http://localhost:8081
+```
+
+## 访问地址
+
+后端接口文档：
 
 ```text
 http://localhost:8081/doc.html
 ```
+
+前端页面：
+
+| 页面 | 地址 | 说明 |
+| --- | --- | --- |
+| Dashboard | `http://localhost:5173/` | 展示主流程概览 |
+| 批次管理 | `http://localhost:5173/batches` | 查询批次与质量状态 |
+| 批次详情 | `http://localhost:5173/batches/{id}` | 查看批次详情和该批次下检测任务 |
+| 检测任务 | `http://localhost:5173/inspection-tasks` | 查询检测任务 |
+| 检测结果 | `http://localhost:5173/detections` | 查询检测框和复核状态 |
+| 人工复核 | `http://localhost:5173/reviews` | 查看复核记录，可从检测结果页提交复核 |
+| NCR | `http://localhost:5173/ncrs` | 查询 NCR，可创建 CAPA |
+| CAPA | `http://localhost:5173/capas` | 查询、编辑和关闭 CAPA |
 
 ## 数据库初始化
 
@@ -88,6 +136,23 @@ SOURCE sample-data/sample_seed_data.sql;
 ```
 
 如果使用 MySQL Workbench，也可以手动打开 SQL 文件后依次执行。
+
+## 项目截图
+
+截图目录：
+
+```text
+screenshots/
+```
+
+建议保留以下关键页面截图，便于作品集展示和面试讲解：
+
+- `dashboard.png`：系统首页与主流程。
+- `batch-list.png`：批次列表与状态展示。
+- `detection-results.png`：检测结果与人工复核入口。
+- `review-list.png`：人工复核记录。
+- `ncr-list.png`：NCR 不合格记录。
+- `capa-list.png`：CAPA 整改闭环。
 
 ## 项目亮点
 

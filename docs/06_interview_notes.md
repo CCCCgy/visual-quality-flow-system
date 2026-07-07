@@ -1,152 +1,115 @@
-## production_batch 批次管理模块
+# 简历描述与面试讲解话术
 
-本模块是系统的业务入口，用于管理一次生产批次的基础信息和质量状态。
+## 1. 简历项目描述
 
-核心调用链：
+项目名称：工业视觉检测结果复核与质量闭环管理系统
 
-用户请求
-→ ProductionBatchController
-→ ProductionBatchService
-→ ProductionBatchServiceImpl
-→ ProductionBatchMapper
-→ production_batch 表
+项目描述：
 
-核心业务规则：
+基于 Spring Boot 3 + Vue 3 设计并实现工业视觉质检结果复核与质量闭环管理系统原型，模拟 YOLO 检测结果进入企业质量流程后的人工复核、NCR 不合格记录、CAPA 整改闭环和批次状态追踪。系统覆盖生产批次、检测任务、检测图片、检测结果、人工复核、NCR、CAPA 等核心对象，支持从模型 JSON 导入到批次质量状态关闭的完整业务链路。
 
-1. batchNo 不能重复。
-2. 创建批次时默认状态为 CREATED。
-3. CLOSED 状态的批次不能再修改基础信息。
-4. CLOSED 状态的批次不能切换回其他状态。
-5. Controller 只负责接收请求和返回结果，业务校验放在 ServiceImpl 中。
+技术栈：
 
-该模块验证了 Spring Boot、MyBatis-Plus、MySQL、Knife4j 接口调试的完整后端开发流程。
+- 后端：Java 21、Spring Boot 3、MyBatis-Plus、MySQL 8、Knife4j、Validation、Lombok。
+- 前端：Vue 3、Vite、Element Plus、Vue Router、Axios。
 
-## inspection_task 检测任务模块
+个人职责：
 
-本模块用于管理某个生产批次下的一次视觉检测任务，是 production_batch 和后续 detection_result 的中间层。
+- 设计 8 张核心业务表，明确批次、任务、图片、检测结果、复核、NCR、CAPA 的追溯关系。
+- 实现 YOLO JSON 导入逻辑，将模型输出的类别、置信度、bbox 坐标和原始 payload 转换为业务数据。
+- 实现人工复核模块，将模型检测结果与人工复核结论分离，支持确认缺陷、误检和需复检。
+- 实现 NCR / CAPA 质量闭环模块，使用事务保证创建 NCR、创建 CAPA、关闭 CAPA 时跨表状态一致。
+- 搭建 Vue 3 前端页面，完成批次、任务、检测结果、复核、NCR、CAPA 的主链路展示与操作。
+- 编写数据库设计、状态机、API 清单、演示脚本和面试说明文档。
 
-核心调用链：
+项目亮点：
 
-用户请求
-→ InspectionTaskController
-→ InspectionTaskService
-→ InspectionTaskServiceImpl
-→ InspectionTaskMapper
-→ inspection_task 表
+- 不是简单 CRUD，而是围绕工业视觉质检后的质量闭环建模。
+- 引入 `PENDING_REVIEW -> CONFIRMED_DEFECT -> NCR -> CAPA -> CLOSED` 的可追溯流程。
+- 将 AI 模型输出、人工复核结论和质量业务单据分层存储，便于扩展和审计。
+- 关键流程使用事务保障 `detection_result`、`review_record`、`ncr_record`、`capa_record`、`production_batch` 状态一致。
 
-核心业务规则：
+可放入简历的精简版：
 
-1. taskNo 不能重复。
-2. 创建检测任务时必须绑定已存在的 production_batch。
-3. CLOSED 状态的批次不能继续创建检测任务。
-4. 检测任务状态限定为 CREATED、WAIT_REVIEW、REVIEWED、CLOSED、CANCELLED。
-5. CLOSED 和 CANCELLED 状态的任务不能切换回其他状态。
+> 工业视觉检测结果复核与质量闭环管理系统：基于 Spring Boot 3、MyBatis-Plus、MySQL 8、Vue 3 和 Element Plus 实现工业视觉质检业务原型，支持 YOLO JSON 检测结果导入、人工复核、NCR 不合格记录、CAPA 整改闭环和批次状态追踪。设计 8 张核心业务表和状态机，使用事务保证 NCR/CAPA 创建与关闭时跨表状态一致，完成从模型检测结果到质量闭环关闭的完整主链路。
 
-该模块体现了业务对象之间的关联校验：检测任务不能脱离生产批次单独存在。
+## 2. 面试讲解话术
 
+### 2.1 一分钟版本
 
-## detection_result 检测结果导入模块
+这个项目是一个工业视觉质检结果复核与质量闭环系统。它不是训练 YOLO 模型，而是解决模型检测结果进入企业质量管理后的业务流程问题。
 
-本模块用于将 YOLO 推理输出的 JSON 转换为系统中的业务数据。
+主链路是：生产批次 -> 检测任务 -> YOLO JSON 导入 -> 检测结果 -> 人工复核 -> NCR -> CAPA -> 批次关闭。
 
-核心流程：
+我重点做了三件事：
 
-YOLO JSON
-→ DetectionController
-→ DetectionImportService
-→ InspectionImageMapper
-→ DetectionResultMapper
-→ inspection_image / detection_result 表
+1. 把 YOLO 输出的检测框、类别和置信度转换成业务表里的检测结果。
+2. 把模型结果和人工复核结论分离，只有人工确认的缺陷才能进入 NCR。
+3. 通过 NCR 和 CAPA 模块实现质量闭环，并用事务保证 CAPA 关闭时同步关闭 NCR 和批次状态。
 
-核心业务规则：
+### 2.2 三分钟版本
 
-1. 只有存在的检测任务才能导入检测结果。
-2. CLOSED / CANCELLED 状态的检测任务不允许继续导入。
-3. 导入时根据 sourceName 创建或关联 inspection_image。
-4. 每个 box 映射为一条 detection_result。
-5. bbox_xyxy 会被拆分为 bbox_x1、bbox_y1、bbox_x2、bbox_y2。
-6. 检测结果默认状态为 PENDING_REVIEW。
-7. 导入完成后，检测任务状态变为 WAIT_REVIEW。
+这个项目的背景是：视觉模型可以识别缺陷，但企业质量管理不能只依赖模型输出。真实场景里，检测框还需要人工复核，确认后才能形成不合格记录，再进入整改和验证流程。
 
-这个模块体现了 AI 模型输出到业务数据库的转换过程，是本系统与 YOLO 检测项目的衔接点。
+所以我把系统拆成几层：
 
-## review_record 人工复核模块
+- 第一层是生产批次和检测任务，负责承载业务对象和模型执行记录。
+- 第二层是检测图片和检测结果，负责保存 YOLO JSON 导入后的结构化结果。
+- 第三层是人工复核，负责把模型结果转成人工结论。
+- 第四层是 NCR 和 CAPA，负责质量问题记录、整改措施和关闭验证。
 
-本模块用于对模型检测结果进行人工确认，是视觉检测系统进入质量闭环前的重要环节。
+状态机上，检测结果先是 `PENDING_REVIEW`，人工复核后变成 `CONFIRMED_DEFECT`、`FALSE_POSITIVE` 或 `NEED_RECHECK`。只有 `CONFIRMED_DEFECT` 可以创建 NCR。创建 NCR 后批次进入 `NCR_OPEN`；创建 CAPA 后批次进入 `CAPA_OPEN`；关闭 CAPA 后，系统同步关闭 CAPA、NCR 和批次。
 
-核心流程：
+技术实现上，后端使用 Spring Boot 3、MyBatis-Plus 和 MySQL，前端使用 Vue 3、Element Plus 和 Axios。关键业务操作都放在 Service 层，Controller 只负责接收请求和返回统一结果。创建 NCR、创建 CAPA、关闭 CAPA 都使用事务，保证跨表状态一致。
 
-detection_result
-→ ReviewRecordController
-→ ReviewRecordService
-→ ReviewRecordMapper
-→ review_record 表
-→ 同步更新 detection_result.status
+### 2.3 可以重点展开的问题
 
-核心业务规则：
+问题：为什么不直接把 YOLO 结果当成缺陷？
 
-1. 只有存在的 detection_result 才能复核。
-2. 只有 PENDING_REVIEW 状态的检测结果允许复核。
-3. 同一个 detection_result 只能生成一条 review_record。
-4. reviewerId 必须对应系统中的有效用户。
-5. reviewResult 只能是 CONFIRMED_DEFECT、FALSE_POSITIVE、NEED_RECHECK。
-6. 提交复核后，需要同步更新 detection_result.status。
-7. 复核接口使用事务，保证 review_record 插入和 detection_result 状态更新的一致性。
+回答：
 
-该模块体现了工业视觉检测场景中的“人机协同”：模型负责初筛，人工负责最终确认，后续 NCR 和 CAPA 只基于复核后的质量结论继续流转。
+> 因为模型输出只是候选结果，工业质量结论通常需要人工确认。系统把 `detection_result` 和 `review_record` 分开，既保留模型证据，也保留人工判断。这样误检不会直接进入 NCR，质量流程更可靠。
 
-## ncr_record 不合格记录模块
+问题：NCR 和 CAPA 的关系是什么？
 
-本模块用于将人工确认后的缺陷转化为质量管理流程中的 NCR 不合格记录。
+回答：
 
-核心流程：
+> NCR 是不合格记录，表示已经确认存在质量问题；CAPA 是纠正和预防措施，用来分析原因、制定措施并验证效果。系统中只有 OPEN 状态 NCR 可以创建 CAPA，同一个 NCR 只能创建一条 CAPA。
 
-review_record
-→ NcrRecordController
-→ NcrRecordService
-→ NcrRecordMapper
-→ ncr_record 表
-→ 更新 production_batch.status 为 NCR_OPEN
+问题：项目里事务用在哪里？
 
-核心业务规则：
+回答：
 
-1. 只有 CONFIRMED_DEFECT 的复核记录才能创建 NCR。
-2. FALSE_POSITIVE 和 NEED_RECHECK 不允许创建 NCR。
-3. 同一个 review_record 只能创建一条 NCR。
-4. 创建 NCR 时，需要从 review_record 追溯 detection_result、inspection_task 和 production_batch。
-5. 创建 NCR 后，批次状态更新为 NCR_OPEN。
-6. NCR 初始状态为 OPEN。
-7. CLOSED / CANCELLED 状态的 NCR 不允许恢复为 OPEN。
-8. 创建 NCR 与更新批次状态使用同一个事务，保证数据一致性。
-9. 不存在的 reviewId / createdBy 返回 404，非法状态和非法业务流转返回 400。
+> 事务主要用在跨表状态一致的地方。例如创建 NCR 时要插入 `ncr_record` 并更新批次状态为 `NCR_OPEN`；创建 CAPA 时要插入 `capa_record`，同时更新 NCR 为 `CAPA_CREATED`、批次为 `CAPA_OPEN`；关闭 CAPA 时要同步关闭 CAPA、NCR 和批次。这些动作不能只成功一部分。
 
-该模块体现了从“人工确认缺陷”到“质量不合格记录”的业务转换，是质量闭环的入口。
+问题：这个项目和普通 CRUD 的区别是什么？
 
-## capa_record CAPA 整改闭环模块
+回答：
 
-本模块用于将 NCR 不合格记录转化为 CAPA 整改闭环，是质量管理流程的最终闭环环节。
+> 普通 CRUD 只关注单表增删改查，而这个项目围绕一条工业质量业务链路建模：模型输出、人工确认、不合格记录、整改闭环和批次状态回写。核心价值在状态机、追溯链路和跨表一致性。
 
-核心流程：
+问题：如果继续迭代，会做什么？
 
-ncr_record
-→ CapaRecordController
-→ CapaRecordService
-→ CapaRecordMapper
-→ capa_record 表
-→ 更新 ncr_record.status
-→ 更新 production_batch.status
+回答：
 
-核心业务规则：
+> 我会优先补充登录权限、复核历史、多图片导入、Dashboard 统计指标、NCR/CAPA 审批流，以及和真实文件存储或模型推理服务的集成。
 
-1. 只有 OPEN 状态的 NCR 才能创建 CAPA。
-2. 同一个 NCR 只能创建一条 CAPA。
-3. 创建 CAPA 后，CAPA 状态默认为 IN_PROGRESS。
-4. 创建 CAPA 后，NCR 状态更新为 CAPA_CREATED。
-5. 创建 CAPA 后，批次状态更新为 CAPA_OPEN。
-6. CAPA 可以更新根因、纠正措施、预防措施、验证结果和截止日期。
-7. CLOSED / CANCELLED 状态的 CAPA 不允许继续修改基础信息。
-8. CLOSED / CANCELLED 状态的 CAPA 不允许恢复到其他状态。
-9. 关闭 CAPA 时，需要同步关闭 NCR，并将批次状态更新为 CLOSED。
-10. 创建 CAPA 与更新 NCR / 批次状态使用同一个事务；关闭 CAPA、关闭 NCR、关闭批次也使用同一个事务。
+## 3. 演示顺序建议
 
-该模块体现了质量管理中的整改闭环思想：缺陷不是简单记录结束，而是需要追溯原因、制定措施、验证结果，并最终关闭 NCR 与批次质量状态。
+1. 打开 Dashboard，说明系统主链路。
+2. 打开批次列表，说明批次是质量追溯入口。
+3. 从批次详情查看检测任务。
+4. 从检测任务跳转检测结果。
+5. 对 `PENDING_REVIEW` 检测结果提交人工复核。
+6. 在复核记录中创建 NCR。
+7. 在 NCR 页面创建 CAPA。
+8. 在 CAPA 页面编辑、待验证并关闭 CAPA。
+9. 回到批次和 NCR 页面确认状态同步关闭。
+
+## 4. 项目边界说明
+
+- 本项目不是完整 MES / QMS。
+- 不包含真实企业数据。
+- 不做在线模型推理。
+- 不接入真实工业相机或产线设备。
+- 当前重点是后端主链路、前端演示页面和质量闭环建模。
