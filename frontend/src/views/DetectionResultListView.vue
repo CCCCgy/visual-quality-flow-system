@@ -49,6 +49,9 @@
           />
         </el-select>
         <el-button type="primary" @click="handleSearch">查询</el-button>
+        <el-button type="warning" plain @click="showPendingOnly">
+          只看待复核
+        </el-button>
         <el-button @click="resetSearch">重置</el-button>
       </div>
 
@@ -89,6 +92,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdTime" label="创建时间" min-width="180" />
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.status === 'PENDING_REVIEW'"
+              link
+              type="primary"
+              @click="openReviewDialog(row)"
+            >
+              人工复核
+            </el-button>
+            <span v-else class="muted-action">已复核</span>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pagination">
@@ -103,6 +119,74 @@
         />
       </div>
     </div>
+
+    <el-dialog
+      v-model="reviewDialogVisible"
+      title="人工复核"
+      width="520px"
+      destroy-on-close
+    >
+      <el-form
+        ref="reviewFormRef"
+        :model="reviewForm"
+        :rules="reviewRules"
+        label-width="132px"
+      >
+        <el-form-item label="检测结果 ID">
+          <el-input v-model="reviewForm.detectionResultId" readonly />
+        </el-form-item>
+        <el-form-item label="缺陷类别">
+          <el-input v-model="reviewForm.className" readonly />
+        </el-form-item>
+        <el-form-item label="置信度">
+          <el-input v-model="reviewForm.confidenceText" readonly />
+        </el-form-item>
+        <el-form-item label="复核人 ID" prop="reviewerId">
+          <el-input-number
+            v-model="reviewForm.reviewerId"
+            :min="1"
+            :step="1"
+            controls-position="right"
+            style="width: 180px"
+          />
+        </el-form-item>
+        <el-form-item label="复核结果" prop="reviewResult">
+          <el-select
+            v-model="reviewForm.reviewResult"
+            placeholder="选择复核结果"
+            style="width: 260px"
+          >
+            <el-option
+              v-for="result in reviewResultOptions"
+              :key="result"
+              :label="result"
+              :value="result"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="复核备注">
+          <el-input
+            v-model="reviewForm.reviewComment"
+            type="textarea"
+            :rows="4"
+            maxlength="500"
+            show-word-limit
+            placeholder="填写复核说明"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="reviewDialogVisible = false">取消</el-button>
+        <el-button
+          type="primary"
+          :loading="reviewSubmitting"
+          @click="submitReview"
+        >
+          提交复核
+        </el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
@@ -110,10 +194,14 @@
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { getDetectionResultPage } from '../api/detectionApi'
+import { createReview } from '../api/reviewApi'
 
 const route = useRoute()
 const loading = ref(false)
 const tableData = ref([])
+const reviewDialogVisible = ref(false)
+const reviewSubmitting = ref(false)
+const reviewFormRef = ref()
 
 const query = reactive({
   taskId: '',
@@ -134,6 +222,30 @@ const statusOptions = [
   'FALSE_POSITIVE',
   'NEED_RECHECK'
 ]
+
+const reviewResultOptions = [
+  'CONFIRMED_DEFECT',
+  'FALSE_POSITIVE',
+  'NEED_RECHECK'
+]
+
+const reviewForm = reactive({
+  detectionResultId: '',
+  className: '',
+  confidenceText: '',
+  reviewerId: 2,
+  reviewResult: 'CONFIRMED_DEFECT',
+  reviewComment: ''
+})
+
+const reviewRules = {
+  reviewerId: [
+    { required: true, message: '请输入复核人 ID', trigger: 'change' }
+  ],
+  reviewResult: [
+    { required: true, message: '请选择复核结果', trigger: 'change' }
+  ]
+}
 
 function statusTagType(status) {
   const typeMap = {
@@ -186,12 +298,44 @@ function handleSearch() {
   fetchDetections()
 }
 
+function showPendingOnly() {
+  query.status = 'PENDING_REVIEW'
+  handleSearch()
+}
+
 function resetSearch() {
   query.taskId = ''
   query.imageId = ''
   query.className = ''
   query.status = ''
   handleSearch()
+}
+
+function openReviewDialog(row) {
+  reviewForm.detectionResultId = row.id
+  reviewForm.className = row.className
+  reviewForm.confidenceText = formatConfidence(row.confidence)
+  reviewForm.reviewerId = 2
+  reviewForm.reviewResult = 'CONFIRMED_DEFECT'
+  reviewForm.reviewComment = ''
+  reviewDialogVisible.value = true
+}
+
+async function submitReview() {
+  await reviewFormRef.value?.validate()
+  reviewSubmitting.value = true
+  try {
+    await createReview({
+      detectionResultId: Number(reviewForm.detectionResultId),
+      reviewerId: Number(reviewForm.reviewerId),
+      reviewResult: reviewForm.reviewResult,
+      reviewComment: reviewForm.reviewComment || undefined
+    })
+    reviewDialogVisible.value = false
+    await fetchDetections()
+  } finally {
+    reviewSubmitting.value = false
+  }
 }
 
 watch(
@@ -213,6 +357,11 @@ onMounted(() => {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.muted-action {
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 @media (max-width: 760px) {

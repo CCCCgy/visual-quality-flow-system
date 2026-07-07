@@ -21,7 +21,7 @@
         <el-menu-item index="/batches">批次管理</el-menu-item>
         <el-menu-item index="/inspection-tasks">检测任务</el-menu-item>
         <el-menu-item index="/detections">检测结果</el-menu-item>
-        <el-menu-item index="/reviews" disabled>人工复核</el-menu-item>
+        <el-menu-item index="/reviews">人工复核</el-menu-item>
         <el-menu-item index="/ncrs" disabled>NCR</el-menu-item>
         <el-menu-item index="/capas" disabled>CAPA</el-menu-item>
       </el-menu>
@@ -57,6 +57,9 @@ const activePath = computed(() => {
   }
   if (route.path.startsWith('/detections')) {
     return '/detections'
+  }
+  if (route.path.startsWith('/reviews')) {
+    return '/reviews'
   }
   return route.path
 })

@@ -5,6 +5,7 @@ import BatchListView from '../views/BatchListView.vue'
 import BatchDetailView from '../views/BatchDetailView.vue'
 import InspectionTaskListView from '../views/InspectionTaskListView.vue'
 import DetectionResultListView from '../views/DetectionResultListView.vue'
+import ReviewListView from '../views/ReviewListView.vue'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -38,6 +39,11 @@ const router = createRouter({
           path: 'detections',
           name: 'DetectionResultList',
           component: DetectionResultListView
+        },
+        {
+          path: 'reviews',
+          name: 'ReviewList',
+          component: ReviewListView
         }
       ]
     }
