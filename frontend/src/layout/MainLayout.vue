@@ -22,8 +22,8 @@
         <el-menu-item index="/inspection-tasks">检测任务</el-menu-item>
         <el-menu-item index="/detections">检测结果</el-menu-item>
         <el-menu-item index="/reviews">人工复核</el-menu-item>
-        <el-menu-item index="/ncrs" disabled>NCR</el-menu-item>
-        <el-menu-item index="/capas" disabled>CAPA</el-menu-item>
+        <el-menu-item index="/ncrs">NCR</el-menu-item>
+        <el-menu-item index="/capas">CAPA</el-menu-item>
       </el-menu>
     </el-aside>
 
@@ -60,6 +60,12 @@ const activePath = computed(() => {
   }
   if (route.path.startsWith('/reviews')) {
     return '/reviews'
+  }
+  if (route.path.startsWith('/ncrs')) {
+    return '/ncrs'
+  }
+  if (route.path.startsWith('/capas')) {
+    return '/capas'
   }
   return route.path
 })

@@ -83,6 +83,19 @@
         />
         <el-table-column prop="reviewedTime" label="复核时间" min-width="180" />
         <el-table-column prop="createdTime" label="创建时间" min-width="180" />
+        <el-table-column label="操作" width="130" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              v-if="row.reviewResult === 'CONFIRMED_DEFECT'"
+              link
+              type="primary"
+              @click="openNcrDialog(row)"
+            >
+              创建 NCR
+            </el-button>
+            <span v-else class="muted-action">无需 NCR</span>
+          </template>
+        </el-table-column>
       </el-table>
 
       <div class="pagination">
@@ -97,15 +110,78 @@
         />
       </div>
     </div>
+
+    <el-dialog
+      v-model="ncrDialogVisible"
+      title="创建 NCR"
+      width="560px"
+      destroy-on-close
+    >
+      <el-form
+        ref="ncrFormRef"
+        :model="ncrForm"
+        :rules="ncrRules"
+        label-width="120px"
+      >
+        <el-form-item label="复核 ID">
+          <el-input v-model="ncrForm.reviewId" readonly />
+        </el-form-item>
+        <el-form-item label="NCR 编号" prop="ncrNo">
+          <el-input v-model="ncrForm.ncrNo" />
+        </el-form-item>
+        <el-form-item label="严重度" prop="severity">
+          <el-select v-model="ncrForm.severity" style="width: 180px">
+            <el-option
+              v-for="severity in severityOptions"
+              :key="severity"
+              :label="severity"
+              :value="severity"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="问题描述" prop="description">
+          <el-input
+            v-model="ncrForm.description"
+            type="textarea"
+            :rows="4"
+            maxlength="1000"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="创建人 ID" prop="createdBy">
+          <el-input-number
+            v-model="ncrForm.createdBy"
+            :min="1"
+            :step="1"
+            controls-position="right"
+            style="width: 180px"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <el-button @click="ncrDialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="ncrSubmitting" @click="submitNcr">
+          创建 NCR
+        </el-button>
+      </template>
+    </el-dialog>
   </section>
 </template>
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
+import { createNcr } from '../api/ncrApi'
 import { getReviewPage } from '../api/reviewApi'
 
+const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
+const ncrDialogVisible = ref(false)
+const ncrSubmitting = ref(false)
+const ncrFormRef = ref()
 
 const query = reactive({
   taskId: '',
@@ -125,6 +201,25 @@ const reviewResultOptions = [
   'FALSE_POSITIVE',
   'NEED_RECHECK'
 ]
+
+const severityOptions = ['LOW', 'MEDIUM', 'HIGH']
+
+const ncrForm = reactive({
+  reviewId: '',
+  ncrNo: '',
+  severity: 'MEDIUM',
+  description: '',
+  createdBy: 3
+})
+
+const ncrRules = {
+  ncrNo: [{ required: true, message: '请输入 NCR 编号', trigger: 'blur' }],
+  severity: [{ required: true, message: '请选择严重度', trigger: 'change' }],
+  description: [
+    { required: true, message: '请输入问题描述', trigger: 'blur' }
+  ],
+  createdBy: [{ required: true, message: '请输入创建人 ID', trigger: 'change' }]
+}
 
 function reviewResultTagType(result) {
   const typeMap = {
@@ -166,6 +261,35 @@ function resetSearch() {
   handleSearch()
 }
 
+function openNcrDialog(row) {
+  ncrForm.reviewId = row.id
+  ncrForm.ncrNo = `NCR-FE-${Date.now()}`
+  ncrForm.severity = 'MEDIUM'
+  ncrForm.description =
+    row.reviewComment || 'Confirmed defect requires NCR tracking.'
+  ncrForm.createdBy = 3
+  ncrDialogVisible.value = true
+}
+
+async function submitNcr() {
+  await ncrFormRef.value?.validate()
+  ncrSubmitting.value = true
+  try {
+    await createNcr({
+      ncrNo: ncrForm.ncrNo,
+      reviewId: Number(ncrForm.reviewId),
+      severity: ncrForm.severity,
+      description: ncrForm.description,
+      createdBy: Number(ncrForm.createdBy)
+    })
+    ElMessage.success('NCR 创建成功')
+    ncrDialogVisible.value = false
+    router.push('/ncrs')
+  } finally {
+    ncrSubmitting.value = false
+  }
+}
+
 onMounted(fetchReviews)
 </script>
 
@@ -174,6 +298,11 @@ onMounted(fetchReviews)
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+}
+
+.muted-action {
+  color: #94a3b8;
+  font-size: 13px;
 }
 
 @media (max-width: 760px) {
