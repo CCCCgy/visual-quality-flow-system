@@ -87,6 +87,57 @@
 
 ## 快速启动
 
+## 使用 Docker Compose 启动 MySQL
+
+如果本机没有安装 MySQL，或希望快速准备一套隔离的演示数据库，可以在项目根目录使用 Docker Compose 启动 MySQL 8。
+
+启动数据库：
+
+```bat
+docker compose up -d
+```
+
+查看容器状态：
+
+```bat
+docker ps
+```
+
+Docker MySQL 默认连接信息：
+
+```text
+host: localhost
+port: 3306
+database: visual_qms
+username: root
+password: visual_qms_password
+```
+
+使用 Docker MySQL 启动后端：
+
+```bat
+cd /d D:\Project_Portfolio\visual-quality-flow-system\backend
+set MYSQL_PASSWORD=visual_qms_password
+mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
+```
+
+停止数据库：
+
+```bat
+docker compose down
+```
+
+`docker compose down` 不会删除 named volume 中的 MySQL 数据。下次重新 `docker compose up -d` 时会继续使用已有数据。
+
+如果需要清空 Docker 数据卷并重新执行初始化 SQL：
+
+```bat
+docker compose down -v
+docker compose up -d
+```
+
+`docker compose down -v` 会删除数据库数据，请只在需要重置演示环境时使用。本地开发也可以继续使用自己安装的 MySQL，只要后端启动时的 `MYSQL_PASSWORD` 与本地 MySQL 密码对应即可。
+
 ### 后端启动
 
 进入后端目录，并通过环境变量传入本地 MySQL 密码：

@@ -4,12 +4,58 @@
 
 ## 1. 演示准备
 
+### 方式一：使用本地 MySQL
+
+如果本机已经安装 MySQL，可以按 `sample-data` 中的 SQL 初始化数据库，并在启动后端时把 `MYSQL_PASSWORD` 设置为本地 MySQL 密码。
+
+初始化文件：
+
+```text
+sample-data/init_schema.sql
+sample-data/sample_seed_data.sql
+```
+
+### 方式二：使用 Docker Compose 启动 MySQL
+
+如果希望快速准备演示数据库，可以在项目根目录启动 Docker MySQL：
+
+```bat
+cd /d D:\Project_Portfolio\visual-quality-flow-system
+docker compose up -d
+docker ps
+```
+
+Docker MySQL 默认连接信息：
+
+```text
+host: localhost
+port: 3306
+database: visual_qms
+username: root
+password: visual_qms_password
+```
+
+如果需要重置 Docker 数据库并重新执行初始化 SQL：
+
+```bat
+docker compose down -v
+docker compose up -d
+```
+
+说明：`docker compose down` 不会删除 named volume 中的数据，`docker compose down -v` 会删除数据库数据。
+
 ### 启动后端
 
 ```bat
 cd /d D:\Project_Portfolio\visual-quality-flow-system\backend
 set MYSQL_PASSWORD=your_mysql_password
 mvn spring-boot:run -Dspring-boot.run.arguments=--server.port=8081
+```
+
+如果使用 Docker MySQL，则使用：
+
+```bat
+set MYSQL_PASSWORD=visual_qms_password
 ```
 
 后端接口文档：
