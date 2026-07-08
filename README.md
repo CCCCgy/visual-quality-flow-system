@@ -49,6 +49,7 @@ YOLO 等视觉检测模型可以输出缺陷类别、置信度和检测框坐标
 - Element Plus
 - Vue Router
 - Axios
+- ECharts
 
 ## 已完成功能模块
 
@@ -56,10 +57,18 @@ YOLO 等视觉检测模型可以输出缺陷类别、置信度和检测框坐标
 - 检测任务管理：创建任务、分页查询、详情、按批次查询、状态更新。
 - YOLO JSON 导入：解析检测 JSON，写入图片与检测结果。
 - 检测结果查询：按任务、图片、类别、复核状态查询检测结果。
+- 检测结果详情：查看检测图片示意图，并叠加 bbox 展示类别、置信度和状态。
 - 人工复核：对检测结果确认缺陷、标记误检或要求复检。
 - NCR：基于确认缺陷的复核记录创建不合格记录，并更新批次状态。
 - CAPA：基于 OPEN NCR 创建整改闭环，支持更新、验证、关闭和同步关闭批次。
-- 前端页面：Dashboard、批次、检测任务、检测结果、人工复核、NCR、CAPA 主链路页面。
+- Dashboard 质量看板：统计批次、检测任务、检测结果、待复核、确认缺陷、OPEN NCR、进行中 CAPA 和已关闭 CAPA。
+- 前端页面：Dashboard、批次、检测任务、检测结果、检测结果详情、人工复核、NCR、CAPA 主链路页面。
+
+## Phase 2 新亮点
+
+- Dashboard 质量看板：用统计卡片和图表展示批次、检测结果、待复核、NCR、CAPA 等质量指标，便于快速说明当前质量闭环运行状态。
+- 检测结果 bbox 可视化详情页：支持进入单条检测结果详情，以样例工业陶瓷图片叠加 bbox 框，展示类别、置信度、复核状态和坐标信息。
+- 详情页人工复核入口：对 `PENDING_REVIEW` 检测结果，可直接在详情页发起人工复核，让“模型检测结果 -> 人工确认 -> NCR/CAPA”的演示链路更完整。
 
 ## 快速启动
 
@@ -114,6 +123,7 @@ http://localhost:8081/doc.html
 | 批次详情 | `http://localhost:5173/batches/{id}` | 查看批次详情和该批次下检测任务 |
 | 检测任务 | `http://localhost:5173/inspection-tasks` | 查询检测任务 |
 | 检测结果 | `http://localhost:5173/detections` | 查询检测框和复核状态 |
+| 检测结果详情 | `http://localhost:5173/detections/{id}` | 查看样例图片上的 bbox 可视化，并可发起人工复核 |
 | 人工复核 | `http://localhost:5173/reviews` | 查看复核记录，可从检测结果页提交复核 |
 | NCR | `http://localhost:5173/ncrs` | 查询 NCR，可创建 CAPA |
 | CAPA | `http://localhost:5173/capas` | 查询、编辑和关闭 CAPA |
@@ -148,11 +158,15 @@ screenshots/
 建议保留以下关键页面截图，便于作品集展示和面试讲解：
 
 - `dashboard.png`：系统首页与主流程。
+- `dashboard-statistics.png`：Phase 2 质量统计看板，展示统计卡片和图表。
 - `batch-list.png`：批次列表与状态展示。
 - `detection-results.png`：检测结果与人工复核入口。
+- `detection-visual-detail.png`：检测结果详情页与 bbox 可视化。
 - `review-list.png`：人工复核记录。
 - `ncr-list.png`：NCR 不合格记录。
 - `capa-list.png`：CAPA 整改闭环。
+
+当前仓库已包含基础页面截图。如果还没有 `dashboard-statistics.png` 和 `detection-visual-detail.png`，建议在本地启动前后端后补充截图，不需要提交 `dist` 或 `node_modules`。
 
 ## 项目亮点
 
@@ -162,6 +176,9 @@ screenshots/
 - 将模型检测结果与人工复核结论分离，便于追溯和扩展。
 - 引入 NCR / CAPA 质量流程，贴近企业质量管理语境。
 - 使用事务保证创建 NCR、创建 CAPA、关闭 CAPA 等跨表状态一致性。
+- 使用 Dashboard 展示批次、检测结果、待复核、NCR、CAPA 等质量指标，让业务状态一眼可见。
+- 支持检测结果详情页，以样例图片叠加 bbox 框展示类别、置信度与复核状态，强化工业视觉质检场景感。
+- 支持从检测结果详情页进入人工复核，提高视觉质检业务展示效果和演示连贯性。
 
 ## 非目标说明
 

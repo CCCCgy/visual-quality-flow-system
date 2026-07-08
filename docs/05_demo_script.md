@@ -1,6 +1,6 @@
-﻿# 前后端演示脚本
+# 前后端演示脚本
 
-本文用于面试、作品集录屏或现场演示。推荐先用前端页面展示主链路，再用 Knife4j 补充说明接口和状态流转。
+本文用于面试、作品集录屏或现场演示。推荐先用前端页面完整展示质量闭环，再用 Knife4j 补充说明接口和状态流转。
 
 ## 1. 演示准备
 
@@ -32,219 +32,198 @@ npm.cmd run dev
 http://localhost:5173
 ```
 
-说明：示例编号如果重复，请替换日期或序号后重新执行。
+说明：如果演示数据中的编号重复，请替换日期或序号后重新执行。
 
 ## 2. 演示主线
 
 ```text
-Dashboard
--> 创建 / 查看生产批次
--> 创建检测任务
--> 导入 YOLO JSON
--> 查看检测结果
--> 人工复核为 CONFIRMED_DEFECT
+Dashboard 质量看板
+-> 批次列表和批次详情
+-> 检测任务
+-> 检测结果列表
+-> 检测结果详情与 bbox 可视化
+-> 人工复核
 -> 创建 NCR
 -> 创建 CAPA
--> 更新 / 关闭 CAPA
--> 验证批次、NCR、CAPA 同步关闭
+-> 关闭 CAPA 并核对状态同步
 ```
 
-## 3. Dashboard：说明系统定位
+## 3. Step 1：打开 Dashboard，说明质量看板指标
 
-前端页面：
+页面路径：
 
 ```text
 http://localhost:5173/
 ```
 
-演示动作：
+操作方式：
 
-- 打开 Dashboard。
-- 指出系统主链路：生产批次 -> 检测任务 -> YOLO JSON 导入 -> 检测结果 -> 人工复核 -> NCR -> CAPA。
+- 打开 Dashboard 首页。
+- 说明顶部统计卡片：生产批次、检测任务、检测结果、待复核、确认缺陷、OPEN NCR、进行中 CAPA、已关闭 CAPA。
+- 说明图表区域：批次状态分布、检测结果状态分布、缺陷类别分布、NCR / CAPA 状态分布。
 
-讲解话术：
+预期结果：
 
-> 这个项目不是做模型训练，而是解决模型检测结果进入企业质量管理后的流程问题。YOLO 只能输出框和类别，真实质检还需要人工复核、NCR 和 CAPA，最后形成批次质量状态闭环。
+- Dashboard 显示真实后端统计数据。
+- 如果某类数据为空，图表显示空状态而不是报错。
 
-## 4. 批次管理：查看质量对象
+面试讲解话术：
 
-前端页面：
+> Dashboard 的作用是把质量闭环的当前状态集中展示出来。面试时我会先从这里说明系统不是单纯 CRUD，而是围绕批次、检测结果、复核、NCR 和 CAPA 的质量状态做追踪和统计。
+
+## 4. Step 2：查看批次列表和批次详情
+
+页面路径：
 
 ```text
 http://localhost:5173/batches
+http://localhost:5173/batches/{id}
 ```
 
-后端接口：
-
-```text
-GET /api/batches
-GET /api/batches/{id}
-```
-
-演示动作：
+操作方式：
 
 - 在批次列表按批次号或状态筛选。
 - 点击“查看详情”进入批次详情。
-- 在批次详情查看“该批次下的检测任务”。
+- 在批次详情中查看该批次下的检测任务。
 
-讲解话术：
+预期结果：
 
-> 批次是质量追溯的业务入口。后续检测任务、检测结果、复核、NCR 和 CAPA 都会回溯到批次，这样能回答“哪个批次出现了什么质量问题，以及问题是否已经关闭”。
+- 批次列表展示不同质量状态。
+- 批次详情能关联展示该批次下的检测任务。
 
-## 5. 检测任务：查看模型检测任务
+面试讲解话术：
 
-前端页面：
+> 批次是质量追溯的业务入口。后续检测任务、检测结果、人工复核、NCR 和 CAPA 都能回溯到批次，因此系统最终能回答“哪个批次出现了什么质量问题，以及问题是否已经关闭”。
+
+## 5. Step 3：查看检测任务
+
+页面路径：
 
 ```text
 http://localhost:5173/inspection-tasks
 ```
 
-后端接口：
-
-```text
-GET /api/inspection-tasks
-GET /api/inspection-tasks/by-batch/{batchId}
-```
-
-演示动作：
+操作方式：
 
 - 按 taskNo、batchId 或 status 查询检测任务。
-- 点击“查看检测结果”，跳转到：
-
-```text
-http://localhost:5173/detections?taskId={taskId}
-```
-
-讲解话术：
-
-> 检测任务把生产批次和一次模型检测执行关联起来。第一版不做在线推理，而是通过 YOLO JSON 导入模拟模型结果进入业务系统。
-
-## 6. YOLO JSON 导入：用 Knife4j 演示
-
-前端当前不提供导入表单，建议用 Knife4j 演示。
-
-接口路径：
-
-```text
-POST /api/detections/import-json
-```
-
-示例请求：
-
-```json
-{
-  "taskId": 2001,
-  "yoloJson": {
-    "sourceName": "demo_surface_show_001.jpg",
-    "weightsName": "demo_model.pt",
-    "visualizationName": "demo_surface_show_001_pred.jpg",
-    "classNames": ["CK", "DS", "GS", "SS", "EC", "AC", "PH"],
-    "parameters": {
-      "conf": 0.25,
-      "iou": 0.6,
-      "imgsz": 800
-    },
-    "inferenceTimeMs": 128.5,
-    "boxes": [
-      {
-        "classId": 1,
-        "className": "DS",
-        "confidence": 0.8123,
-        "bboxXyxy": [120.50, 220.30, 188.90, 260.70]
-      }
-    ]
-  }
-}
-```
+- 点击“查看检测结果”，跳转到检测结果列表并带上 taskId 查询条件。
 
 预期结果：
 
-- 写入 `inspection_image`。
-- 写入 `detection_result`。
-- 检测结果默认 `PENDING_REVIEW`。
-- 检测任务状态变为 `WAIT_REVIEW`。
+- 检测任务列表展示任务编号、批次、模型名称、模型版本和任务状态。
+- 跳转后检测结果列表只展示该任务下的检测结果。
 
-讲解话术：
+面试讲解话术：
 
-> 这里是 AI 输出到业务数据的转换层。系统把 YOLO 的 bbox、类别和置信度映射成数据库中的检测结果，同时保留 raw_payload，方便后续追溯。
+> 检测任务把生产批次和一次模型检测执行关联起来。第一版不做在线推理，而是通过 YOLO JSON 导入模拟模型结果进入业务系统，这样重点会落在业务闭环而不是模型训练上。
 
-## 7. 检测结果：进入人工复核
+## 6. Step 4：查看检测结果列表
 
-前端页面：
+页面路径：
 
 ```text
 http://localhost:5173/detections
 ```
 
-后端接口：
+操作方式：
+
+- 使用 taskId、imageId、className 或 status 筛选检测结果。
+- 点击“只看待复核”，定位 `PENDING_REVIEW` 检测结果。
+- 观察列表中的类别、置信度、bbox 坐标和复核状态。
+
+预期结果：
+
+- 检测结果列表展示 YOLO JSON 导入后的结构化检测框数据。
+- `PENDING_REVIEW` 记录可以继续进入人工复核。
+
+面试讲解话术：
+
+> 这里展示的是模型输出进入业务系统后的结构化结果，包括类别、置信度和 bbox 坐标。模型结果不会直接变成质量结论，而是先进入待复核状态。
+
+## 7. Step 5：点击检测结果详情，展示图片 bbox 可视化
+
+页面路径：
 
 ```text
-GET /api/detections
-POST /api/reviews
+http://localhost:5173/detections/{id}
 ```
 
-演示动作：
+操作方式：
 
-- 点击“只看待复核”。
-- 找到 `PENDING_REVIEW` 的检测结果。
+- 在检测结果列表点击“查看详情”。
+- 查看顶部基础信息：检测结果 ID、taskId、imageId、imageName、className、confidence、status、bbox 坐标、createdTime。
+- 查看图片区域中叠加的 bbox 框，以及框附近的类别和置信度标签。
+
+预期结果：
+
+- 页面显示工业陶瓷表面样例图。
+- bbox 坐标按 `1280 x 960` 逻辑尺寸映射到当前显示图片。
+- bbox 缺失或越界时页面不会崩溃，会显示空提示。
+
+面试讲解话术：
+
+> Phase 2 增加了检测结果详情页，让检测框不再只是表格里的数字，而是能叠加到图片上展示。虽然这里使用演示图，但它已经表达了工业视觉质检最核心的信息：缺陷位置、类别、置信度和复核状态。
+
+## 8. Step 6：对 PENDING_REVIEW 检测结果进行人工复核
+
+页面路径：
+
+```text
+http://localhost:5173/detections/{id}
+```
+
+操作方式：
+
+- 确认详情页状态为 `PENDING_REVIEW`。
 - 点击“人工复核”。
-- 选择 `CONFIRMED_DEFECT`，填写备注后提交。
-- 列表刷新后确认该检测结果状态变为 `CONFIRMED_DEFECT`。
+- 保持 reviewerId 默认值 `2`。
+- 选择复核结果：`CONFIRMED_DEFECT`、`FALSE_POSITIVE` 或 `NEED_RECHECK`。
+- 填写复核备注并提交。
 
-讲解话术：
+预期结果：
 
-> 模型结果不直接进入质量结论，而是先进入待复核。人工复核把可疑检测框转成业务结论：真实缺陷、误检或需复检。只有真实缺陷才继续进入 NCR。
+- 提交成功后刷新详情数据。
+- 检测结果状态更新为对应复核结果。
+- 如果选择 `CONFIRMED_DEFECT`，该结果后续可以进入 NCR。
 
-## 8. 复核记录：创建 NCR
+面试讲解话术：
 
-前端页面：
+> 人工复核是模型结果和质量结论之间的隔离层。这样做可以避免模型误检直接进入质量流程，也能保留模型证据和人工判断两个层次的数据。
+
+## 9. Step 7：从复核记录创建 NCR
+
+页面路径：
 
 ```text
 http://localhost:5173/reviews
 ```
 
-后端接口：
+操作方式：
 
-```text
-GET /api/reviews
-POST /api/ncrs
-```
-
-演示动作：
-
-- 筛选 `reviewResult = CONFIRMED_DEFECT`。
+- 筛选或找到 `reviewResult = CONFIRMED_DEFECT` 的复核记录。
 - 点击“创建 NCR”。
 - 使用默认 `NCR-FE-{时间戳}` 编号。
-- 选择严重度，填写问题描述，提交。
-- 成功后跳转到 NCR 页面。
+- 选择严重度，填写问题描述并提交。
 
 预期结果：
 
-- 新增 NCR。
+- 新增 NCR 记录。
 - NCR 状态为 `OPEN`。
 - 对应批次状态变为 `NCR_OPEN`。
 
-讲解话术：
+面试讲解话术：
 
-> NCR 是确认缺陷后的正式不合格记录。它不是从模型直接生成，而是从人工确认的复核记录生成，这能避免误检污染质量流程。
+> NCR 是确认缺陷后的正式不合格记录。系统要求从人工确认的复核记录创建 NCR，而不是从模型结果直接创建 NCR，这样更符合质量管理的审慎流程。
 
-## 9. NCR：创建 CAPA
+## 10. Step 8：从 NCR 创建 CAPA
 
-前端页面：
+页面路径：
 
 ```text
 http://localhost:5173/ncrs
 ```
 
-后端接口：
-
-```text
-GET /api/ncrs
-POST /api/capas
-PATCH /api/ncrs/{id}/status
-```
-
-演示动作：
+操作方式：
 
 - 找到 `OPEN` 状态 NCR。
 - 点击“创建 CAPA”。
@@ -254,37 +233,33 @@ PATCH /api/ncrs/{id}/status
 
 预期结果：
 
-- 新增 CAPA。
+- 新增 CAPA 记录。
 - CAPA 状态为 `IN_PROGRESS`。
 - NCR 状态变为 `CAPA_CREATED`。
 - 批次状态变为 `CAPA_OPEN`。
 
-讲解话术：
+面试讲解话术：
 
-> CAPA 是质量闭环的整改阶段。这里用事务保证 CAPA 创建、NCR 状态和批次状态同时更新，避免出现 CAPA 已建但批次状态没变的跨表不一致。
+> CAPA 是质量闭环的整改阶段。创建 CAPA 时系统会同时更新 NCR 和批次状态，这里用事务保证跨表状态一致，避免出现单据创建了但批次状态没有同步的问题。
 
-## 10. CAPA：编辑并关闭整改
+## 11. Step 9：关闭 CAPA，核对 NCR 和批次状态同步关闭
 
-前端页面：
+页面路径：
 
 ```text
 http://localhost:5173/capas
+http://localhost:5173/ncrs
+http://localhost:5173/batches
 ```
 
-后端接口：
+操作方式：
 
-```text
-GET /api/capas
-PUT /api/capas/{id}
-PATCH /api/capas/{id}/status
-```
-
-演示动作：
-
-- 找到新建 CAPA。
-- 点击“编辑”，补充根因、纠正措施、预防措施和验证结果。
+- 在 CAPA 页面找到新建 CAPA。
+- 点击“编辑”，补充或确认根因、纠正措施、预防措施和验证结果。
 - 点击“待验证”，状态变为 `PENDING_VERIFY`。
 - 点击“关闭”，状态变为 `CLOSED`。
+- 回到 NCR 页面核对 NCR 状态。
+- 回到批次页面核对批次状态。
 
 预期结果：
 
@@ -292,18 +267,10 @@ PATCH /api/capas/{id}/status
 - NCR 状态同步为 `CLOSED`。
 - 批次状态同步为 `CLOSED`。
 
-讲解话术：
+面试讲解话术：
 
 > 关闭 CAPA 是整个质量闭环的终点。系统在一个事务里关闭 CAPA、关闭 NCR，并关闭批次质量状态，体现了质量业务中的跨表一致性控制。
 
-## 11. 最终核对
+## 12. 收尾总结话术
 
-推荐核对页面：
-
-- `/batches`：确认批次状态为 `CLOSED`。
-- `/ncrs`：确认 NCR 状态为 `CLOSED`。
-- `/capas`：确认 CAPA 状态为 `CLOSED`。
-
-收尾话术：
-
-> 这条链路从生产批次开始，到模型检测结果导入，再到人工复核、NCR 和 CAPA，最终回写批次状态。它展示的是工业视觉检测结果进入企业质量体系后的完整闭环，而不是单纯的检测框展示。
+> 这条链路从 Dashboard 的质量概览开始，到批次、检测任务、检测结果、bbox 可视化、人工复核、NCR 和 CAPA，最终回写批次状态。它展示的是工业视觉检测结果进入企业质量体系后的完整闭环，而不是单纯的检测框展示或普通后台管理。
