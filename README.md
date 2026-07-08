@@ -1,5 +1,7 @@
 # 工业视觉检测结果复核与质量闭环管理系统
 
+Visual Quality Flow System: An Industrial Visual Inspection Review and Quality Closed-loop Management Prototype
+
 ## 项目简介
 
 这是一个面向工业视觉质检场景的 Spring Boot + Vue 3 全栈项目原型，用于展示视觉检测结果进入企业质量管理流程后的复核、追溯和整改闭环。
@@ -7,6 +9,18 @@
 本项目不是训练 YOLO 模型，也不接入真实产线推理服务，而是模拟 YOLO 检测结果输出后，如何被导入业务系统、由人工复核确认，并进一步形成 NCR 不合格记录和 CAPA 整改闭环。
 
 系统支持检测结果导入、人工复核、NCR 不合格记录、CAPA 整改闭环、Dashboard 质量看板，以及检测结果 bbox 可视化详情页，适合作为工业视觉质检方向的学习、作品集展示和面试讲解项目。
+
+## 项目状态
+
+当前项目已完成：
+
+- 后端质量闭环接口。
+- 前端管理页面。
+- Dashboard 质量看板。
+- 检测结果 bbox 可视化详情页。
+- Docker Compose MySQL 初始化。
+- 核心流程自动化测试。
+- 截图与演示文档。
 
 ## 项目截图
 
