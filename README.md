@@ -190,6 +190,36 @@ SOURCE sample-data/sample_seed_data.sql;
 
 如果使用 MySQL Workbench，也可以手动打开 SQL 文件后依次执行。
 
+## 后端测试
+
+执行测试前需要确保 MySQL 已启动，并且 `visual_qms` 数据库已完成初始化。
+
+使用本地 MySQL 时：
+
+```bat
+cd backend
+set MYSQL_PASSWORD=your_mysql_password
+mvn test
+```
+
+使用 Docker MySQL 时：
+
+```bat
+docker compose up -d
+cd backend
+set MYSQL_PASSWORD=visual_qms_password
+mvn test
+```
+
+当前后端集成测试覆盖：
+
+- Dashboard 统计接口。
+- YOLO JSON 导入。
+- 人工复核。
+- NCR 创建。
+- CAPA 创建与关闭。
+- 批次 / NCR / CAPA 状态同步。
+
 ## 页面地址
 
 | 页面 | 地址 | 说明 |
