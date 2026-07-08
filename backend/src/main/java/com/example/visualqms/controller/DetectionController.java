@@ -7,6 +7,7 @@ import com.example.visualqms.service.DetectionImportService;
 import com.example.visualqms.service.DetectionResultService;
 import com.example.visualqms.vo.DetectionImportResultVO;
 import com.example.visualqms.vo.DetectionResultVO;
+import com.example.visualqms.vo.DetectionVisualDetailVO;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -60,5 +61,11 @@ public class DetectionController {
     public Result<DetectionResultVO> getDetectionResultDetail(
             @PathVariable @NotNull(message = "id cannot be null") Long id) {
         return Result.success(detectionResultService.getDetectionResultDetail(id));
+    }
+
+    @GetMapping("/{id}/visual-detail")
+    public Result<DetectionVisualDetailVO> getDetectionVisualDetail(
+            @PathVariable @NotNull(message = "id cannot be null") Long id) {
+        return Result.success(detectionResultService.getDetectionVisualDetail(id));
     }
 }

@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.visualqms.common.PageResult;
 import com.example.visualqms.entity.DetectionResult;
 import com.example.visualqms.vo.DetectionResultVO;
+import com.example.visualqms.vo.DetectionVisualDetailVO;
 
 public interface DetectionResultService extends IService<DetectionResult> {
 
@@ -16,4 +17,6 @@ public interface DetectionResultService extends IService<DetectionResult> {
             Long pageSize);
 
     DetectionResultVO getDetectionResultDetail(Long id);
+
+    DetectionVisualDetailVO getDetectionVisualDetail(Long id);
 }

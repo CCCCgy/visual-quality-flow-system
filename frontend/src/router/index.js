@@ -5,6 +5,7 @@ import BatchListView from '../views/BatchListView.vue'
 import BatchDetailView from '../views/BatchDetailView.vue'
 import InspectionTaskListView from '../views/InspectionTaskListView.vue'
 import DetectionResultListView from '../views/DetectionResultListView.vue'
+import DetectionResultDetailView from '../views/DetectionResultDetailView.vue'
 import ReviewListView from '../views/ReviewListView.vue'
 import NcrListView from '../views/NcrListView.vue'
 import CapaListView from '../views/CapaListView.vue'
@@ -41,6 +42,12 @@ const router = createRouter({
           path: 'detections',
           name: 'DetectionResultList',
           component: DetectionResultListView
+        },
+        {
+          path: 'detections/:id',
+          name: 'DetectionResultDetail',
+          component: DetectionResultDetailView,
+          props: true
         },
         {
           path: 'reviews',

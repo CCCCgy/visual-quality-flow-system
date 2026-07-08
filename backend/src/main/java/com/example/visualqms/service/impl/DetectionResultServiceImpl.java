@@ -5,10 +5,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.example.visualqms.common.PageResult;
 import com.example.visualqms.entity.DetectionResult;
+import com.example.visualqms.entity.InspectionImage;
 import com.example.visualqms.exception.BizException;
 import com.example.visualqms.mapper.DetectionResultMapper;
+import com.example.visualqms.mapper.InspectionImageMapper;
 import com.example.visualqms.service.DetectionResultService;
 import com.example.visualqms.vo.DetectionResultVO;
+import com.example.visualqms.vo.DetectionVisualDetailVO;
 import java.util.List;
 import java.util.Set;
 import org.springframework.beans.BeanUtils;
@@ -26,6 +29,12 @@ public class DetectionResultServiceImpl
             "FALSE_POSITIVE",
             "NEED_RECHECK"
     );
+
+    private final InspectionImageMapper inspectionImageMapper;
+
+    public DetectionResultServiceImpl(InspectionImageMapper inspectionImageMapper) {
+        this.inspectionImageMapper = inspectionImageMapper;
+    }
 
     @Override
     public PageResult<DetectionResultVO> pageDetectionResults(
@@ -57,17 +66,36 @@ public class DetectionResultServiceImpl
 
     @Override
     public DetectionResultVO getDetectionResultDetail(Long id) {
-        DetectionResult detectionResult = getById(id);
-        if (detectionResult == null) {
-            throw new BizException(404, "detection result not found");
+        return toVO(getExistingDetectionResult(id));
+    }
+
+    @Override
+    public DetectionVisualDetailVO getDetectionVisualDetail(Long id) {
+        DetectionResult detectionResult = getExistingDetectionResult(id);
+        InspectionImage inspectionImage = inspectionImageMapper.selectById(detectionResult.getImageId());
+        if (inspectionImage == null) {
+            throw new BizException(404, "inspection image not found");
         }
-        return toVO(detectionResult);
+
+        DetectionVisualDetailVO vo = new DetectionVisualDetailVO();
+        BeanUtils.copyProperties(detectionResult, vo);
+        vo.setImageName(inspectionImage.getImageName());
+        vo.setImageUri(inspectionImage.getImageUri());
+        return vo;
     }
 
     private void validateStatus(String status) {
         if (!ALLOWED_STATUS.contains(status)) {
             throw new BizException(400, "invalid detection result status");
         }
+    }
+
+    private DetectionResult getExistingDetectionResult(Long id) {
+        DetectionResult detectionResult = getById(id);
+        if (detectionResult == null) {
+            throw new BizException(404, "detection result not found");
+        }
+        return detectionResult;
     }
 
     private DetectionResultVO toVO(DetectionResult detectionResult) {

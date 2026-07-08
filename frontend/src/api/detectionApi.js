@@ -14,3 +14,10 @@ export function getDetectionResultDetail(id) {
     method: 'get'
   })
 }
+
+export function getDetectionVisualDetail(id) {
+  return request({
+    url: `/detections/${id}/visual-detail`,
+    method: 'get'
+  })
+}

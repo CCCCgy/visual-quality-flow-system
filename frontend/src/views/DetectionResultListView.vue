@@ -92,12 +92,15 @@
           </template>
         </el-table-column>
         <el-table-column prop="createdTime" label="创建时间" min-width="180" />
-        <el-table-column label="操作" width="120" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
+            <el-button link type="primary" @click="goDetail(row)">
+              查看详情
+            </el-button>
             <el-button
               v-if="row.status === 'PENDING_REVIEW'"
               link
-              type="primary"
+              type="warning"
               @click="openReviewDialog(row)"
             >
               人工复核
@@ -192,11 +195,12 @@
 
 <script setup>
 import { onMounted, reactive, ref, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { getDetectionResultPage } from '../api/detectionApi'
 import { createReview } from '../api/reviewApi'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const tableData = ref([])
 const reviewDialogVisible = ref(false)
@@ -309,6 +313,10 @@ function resetSearch() {
   query.className = ''
   query.status = ''
   handleSearch()
+}
+
+function goDetail(row) {
+  router.push(`/detections/${row.id}`)
 }
 
 function openReviewDialog(row) {
