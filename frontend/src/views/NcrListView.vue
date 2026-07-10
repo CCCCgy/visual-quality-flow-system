@@ -196,6 +196,25 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * NCR 不合格记录列表页，展示 ncr_record，并允许 OPEN NCR 创建 CAPA、关闭或取消。
+ *
+ * 路由入口：
+ * /ncrs。
+ *
+ * 调用的前端 API：
+ * getNcrPage、updateNcrStatus、createCapa。
+ *
+ * 对应后端接口：
+ * GET /api/ncrs -> NcrRecordController#pageNcrs；
+ * PATCH /api/ncrs/{id}/status -> NcrRecordController#updateNcrStatus；
+ * POST /api/capas -> CapaRecordController#createCapa。
+ *
+ * 主要交互流程：
+ * OPEN NCR 点击创建 CAPA -> 后端新增 capa_record，同时把 NCR 变为 CAPA_CREATED、批次变为 CAPA_OPEN；
+ * OPEN NCR 也可以直接关闭或取消，成功后刷新列表。
+ */
 import { reactive, ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -248,6 +267,7 @@ const capaRules = {
   ]
 }
 
+// NCR 状态展示色；OPEN 表示仍可处理。
 function ncrStatusTagType(status) {
   const typeMap = {
     OPEN: 'warning',
@@ -258,6 +278,7 @@ function ncrStatusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 查询 ncr_record 分页数据。
 async function fetchNcrs() {
   loading.value = true
   try {
@@ -277,11 +298,13 @@ async function fetchNcrs() {
   }
 }
 
+// 查询时回到第一页。
 function handleSearch() {
   page.pageNo = 1
   fetchNcrs()
 }
 
+// 清空筛选条件并重新查询。
 function resetSearch() {
   query.ncrNo = ''
   query.batchId = ''
@@ -291,6 +314,7 @@ function resetSearch() {
   handleSearch()
 }
 
+// 打开 CAPA 创建弹窗，ncrId 是后端创建 CAPA 和同步状态的关键关联字段。
 function openCapaDialog(row) {
   capaForm.ncrId = row.id
   capaForm.capaNo = `CAPA-FE-${Date.now()}`
@@ -302,6 +326,7 @@ function openCapaDialog(row) {
   capaDialogVisible.value = true
 }
 
+// 创建 CAPA；成功后刷新 NCR 列表并跳转 CAPA 页面继续处理整改。
 async function submitCapa() {
   await capaFormRef.value?.validate()
   capaSubmitting.value = true
@@ -324,6 +349,7 @@ async function submitCapa() {
   }
 }
 
+// 关闭或取消 NCR；后端只更新 ncr_record，不会在此处自动关闭批次。
 async function changeNcrStatus(row, status) {
   const actionText = status === 'CLOSED' ? '关闭' : '取消'
   await ElMessageBox.confirm(`确认${actionText}该 NCR？`, '确认操作', {
@@ -338,17 +364,20 @@ onMounted(fetchNcrs)
 </script>
 
 <style scoped>
+/* 分页区域：控制 ncr_record 分页查询。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* 非 OPEN NCR 无可用列表操作时的弱提示。 */
 .muted-action {
   color: #94a3b8;
   font-size: 13px;
 }
 
+/* 小屏处理：分页器可横向滚动。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

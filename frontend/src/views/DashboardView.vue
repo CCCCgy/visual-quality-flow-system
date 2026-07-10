@@ -55,6 +55,23 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * Dashboard 首页，看板化展示批次、任务、检测结果、NCR 和 CAPA 的统计状态。
+ *
+ * 路由入口：
+ * /。
+ *
+ * 调用的前端 API：
+ * getDashboardSummary、getBatchStatusStats、getDetectionStatusStats、getDefectClassStats、getNcrStatusStats、getCapaStatusStats。
+ *
+ * 对应后端接口：
+ * GET /api/dashboard/* -> DashboardController -> DashboardServiceImpl。
+ *
+ * 主要交互流程：
+ * 页面 mounted -> 并发请求 6 个统计接口 -> summaryCards/actionItems 更新卡片 -> renderCharts 创建 ECharts；
+ * 浏览器 resize 时调用 chart.resize；组件销毁时 disposeCharts 防止图表实例泄漏。
+ */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
@@ -92,6 +109,7 @@ const capaStatusChartRef = ref()
 
 const charts = []
 
+// 顶部指标卡片从 DashboardSummaryVO 映射而来，note 标明后端统计来源或状态含义。
 const summaryCards = computed(() => [
   {
     key: 'batchCount',
@@ -143,6 +161,7 @@ const summaryCards = computed(() => [
   }
 ])
 
+// 待处理提示突出待复核、OPEN NCR 和进行中 CAPA，用于快速识别闭环堵点。
 const actionItems = computed(() => [
   {
     label: '待复核数量',
@@ -161,6 +180,7 @@ const actionItems = computed(() => [
   }
 ])
 
+// 并发加载 Dashboard 所有统计数据；nextTick 后再渲染图表，确保容器 DOM 尺寸可用。
 async function fetchDashboardData() {
   loading.value = true
   try {
@@ -196,6 +216,7 @@ async function fetchDashboardData() {
   }
 }
 
+// 重新创建图表实例，确保数据刷新后不会保留旧 series。
 function renderCharts() {
   disposeCharts()
   charts.push(
@@ -221,6 +242,7 @@ function renderCharts() {
   )
 }
 
+// 渲染状态分布饼图，rows 来自 StatusCountVO[]。
 function renderPieChart(el, rows, emptyText) {
   if (!el) {
     return null
@@ -230,6 +252,7 @@ function renderPieChart(el, rows, emptyText) {
   const chart = echarts.init(el)
   chart.setOption({
     tooltip: { trigger: 'item' },
+    // legend 展示状态名称，series.data 的 name/value 由后端 status/count 转换。
     legend: {
       bottom: 0,
       type: 'scroll'
@@ -238,6 +261,7 @@ function renderPieChart(el, rows, emptyText) {
     graphic: emptyGraphic(data.length === 0, emptyText),
     series: [
       {
+        // series 是 ECharts 的核心数据系列，此处使用环形饼图表达状态占比。
         type: 'pie',
         radius: ['42%', '68%'],
         center: ['50%', '43%'],
@@ -249,6 +273,7 @@ function renderPieChart(el, rows, emptyText) {
   return chart
 }
 
+// 渲染柱状图，用于检测状态和缺陷类别数量对比。
 function renderBarChart(el, rows, emptyText) {
   if (!el) {
     return null
@@ -267,6 +292,7 @@ function renderBarChart(el, rows, emptyText) {
     color: ['#2f8f83'],
     graphic: emptyGraphic(rows.length === 0, emptyText),
     xAxis: {
+      // xAxis 使用状态名或缺陷类别名，来自 rows.name。
       type: 'category',
       data: rows.map((item) => item.name),
       axisLabel: {
@@ -280,6 +306,7 @@ function renderBarChart(el, rows, emptyText) {
     },
     series: [
       {
+        // series.data 使用 rows.value，即后端 group by count。
         type: 'bar',
         barMaxWidth: 42,
         data: rows.map((item) => item.value)
@@ -289,6 +316,7 @@ function renderBarChart(el, rows, emptyText) {
   return chart
 }
 
+// 将 StatusCountVO 转为 ECharts 所需的 name/value 结构。
 function normalizeStatusRows(rows) {
   return (rows || []).map((item) => ({
     name: item.status || '未设置',
@@ -296,6 +324,7 @@ function normalizeStatusRows(rows) {
   }))
 }
 
+// 无数据时在图表中央展示提示，而不是渲染空坐标系。
 function emptyGraphic(show, text) {
   return show
     ? {
@@ -311,10 +340,12 @@ function emptyGraphic(show, text) {
     : null
 }
 
+// 视口变化时同步调整所有图表尺寸。
 function resizeCharts() {
   charts.forEach((chart) => chart?.resize())
 }
 
+// 销毁 ECharts 实例，避免组件反复进入时占用内存。
 function disposeCharts() {
   while (charts.length) {
     charts.pop()?.dispose()
@@ -333,12 +364,14 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+/* Dashboard 主体：卡片、图表和待处理提示纵向排列。 */
 .dashboard-shell {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
+/* 汇总指标区：展示 DashboardSummaryVO 转换出的 8 个指标。 */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(160px, 1fr));
@@ -374,6 +407,7 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
+/* 图表网格：承载 ECharts 容器，宽屏两列、窄屏一列。 */
 .chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -400,6 +434,7 @@ onBeforeUnmount(() => {
   line-height: 1.4;
 }
 
+/* 图表容器：必须有稳定高度，否则 ECharts 初始化时会拿不到尺寸。 */
 .chart {
   width: 100%;
   height: 320px;
@@ -409,6 +444,7 @@ onBeforeUnmount(() => {
   height: 260px;
 }
 
+/* 待处理提示区：突出待复核、OPEN NCR 和进行中 CAPA。 */
 .action-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(160px, 1fr));
@@ -456,6 +492,7 @@ onBeforeUnmount(() => {
   color: #5470c6;
 }
 
+/* 响应式处理：中等屏幕减少列数，保持图表和卡片可读。 */
 @media (max-width: 1100px) {
   .summary-grid,
   .chart-grid,
@@ -468,6 +505,7 @@ onBeforeUnmount(() => {
   }
 }
 
+/* 小屏处理：所有统计块单列堆叠。 */
 @media (max-width: 640px) {
   .summary-grid,
   .chart-grid,

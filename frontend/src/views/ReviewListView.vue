@@ -170,6 +170,24 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 人工复核记录列表页，展示 review_record，并允许基于 CONFIRMED_DEFECT 创建 NCR。
+ *
+ * 路由入口：
+ * /reviews。
+ *
+ * 调用的前端 API：
+ * getReviewPage、createNcr。
+ *
+ * 对应后端接口：
+ * GET /api/reviews -> ReviewRecordController#pageReviews；
+ * POST /api/ncrs -> NcrRecordController#createNcr。
+ *
+ * 主要交互流程：
+ * 查询复核记录 -> CONFIRMED_DEFECT 行显示“创建 NCR”；
+ * 创建 NCR 成功后跳转 /ncrs，让用户继续创建 CAPA 或处理 NCR 状态。
+ */
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -221,6 +239,7 @@ const ncrRules = {
   createdBy: [{ required: true, message: '请输入创建人 ID', trigger: 'change' }]
 }
 
+// 复核结论展示色；只有确认缺陷才进入 NCR 流程。
 function reviewResultTagType(result) {
   const typeMap = {
     CONFIRMED_DEFECT: 'danger',
@@ -230,6 +249,7 @@ function reviewResultTagType(result) {
   return typeMap[result] || 'info'
 }
 
+// 查询 review_record 分页数据。
 async function fetchReviews() {
   loading.value = true
   try {
@@ -248,11 +268,13 @@ async function fetchReviews() {
   }
 }
 
+// 查询时回到第一页。
 function handleSearch() {
   page.pageNo = 1
   fetchReviews()
 }
 
+// 清空复核列表筛选条件。
 function resetSearch() {
   query.taskId = ''
   query.imageId = ''
@@ -261,6 +283,7 @@ function resetSearch() {
   handleSearch()
 }
 
+// 打开 NCR 创建弹窗，把 review_record.id 作为后端追溯入口。
 function openNcrDialog(row) {
   ncrForm.reviewId = row.id
   ncrForm.ncrNo = `NCR-FE-${Date.now()}`
@@ -271,6 +294,7 @@ function openNcrDialog(row) {
   ncrDialogVisible.value = true
 }
 
+// 提交 NCR；后端会校验 reviewResult=CONFIRMED_DEFECT 并同步批次状态为 NCR_OPEN。
 async function submitNcr() {
   await ncrFormRef.value?.validate()
   ncrSubmitting.value = true
@@ -294,17 +318,20 @@ onMounted(fetchReviews)
 </script>
 
 <style scoped>
+/* 分页区域：控制 review_record 分页查询。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* 非 CONFIRMED_DEFECT 复核结果不进入 NCR，因此展示弱提示。 */
 .muted-action {
   color: #94a3b8;
   font-size: 13px;
 }
 
+/* 小屏处理：分页器可横向滚动。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

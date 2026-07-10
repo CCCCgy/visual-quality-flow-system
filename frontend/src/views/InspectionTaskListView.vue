@@ -91,6 +91,23 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 检测任务列表页，展示 inspection_task 分页数据并支持任务号、批次 ID、状态筛选。
+ *
+ * 路由入口：
+ * /inspection-tasks。
+ *
+ * 调用的前端 API：
+ * getInspectionTaskPage。
+ *
+ * 对应后端接口：
+ * GET /api/inspection-tasks -> InspectionTaskController#pageTasks。
+ *
+ * 主要交互流程：
+ * 页面加载或筛选变化 -> fetchTasks -> 后端分页查询；
+ * 点击“查看检测结果” -> /detections?taskId={taskId}。
+ */
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getInspectionTaskPage } from '../api/taskApi'
@@ -113,6 +130,7 @@ const page = reactive({
 
 const statusOptions = ['CREATED', 'WAIT_REVIEW', 'REVIEWED', 'CLOSED', 'CANCELLED']
 
+// 任务状态展示色，不影响后端状态。
 function statusTagType(status) {
   const typeMap = {
     CREATED: 'info',
@@ -124,6 +142,7 @@ function statusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 查询 inspection_task 分页数据，batchId 为空时不传给后端。
 async function fetchTasks() {
   loading.value = true
   try {
@@ -141,11 +160,13 @@ async function fetchTasks() {
   }
 }
 
+// 查询时重置页码，保证筛选后的第一页可见。
 function handleSearch() {
   page.pageNo = 1
   fetchTasks()
 }
 
+// 清空筛选条件后重新查询。
 function resetSearch() {
   query.taskNo = ''
   query.batchId = ''
@@ -153,6 +174,7 @@ function resetSearch() {
   handleSearch()
 }
 
+// 跳转检测结果列表，并通过 query.taskId 传递过滤条件。
 function goDetections(taskId) {
   router.push({
     path: '/detections',
@@ -164,12 +186,14 @@ onMounted(fetchTasks)
 </script>
 
 <style scoped>
+/* 分页区域：控制检测任务列表的 pageNo/pageSize。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* 小屏处理：分页器可横向滚动。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

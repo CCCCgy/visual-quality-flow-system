@@ -86,6 +86,23 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 批次列表页，展示 production_batch 分页数据并支持批次号、状态筛选。
+ *
+ * 路由入口：
+ * /batches。
+ *
+ * 调用的前端 API：
+ * getBatchPage。
+ *
+ * 对应后端接口：
+ * GET /api/batches -> ProductionBatchController#pageBatches。
+ *
+ * 主要交互流程：
+ * 页面加载或查询条件变化 -> fetchBatches -> 后端分页查询 -> tableData/page 更新；
+ * 点击“查看详情” -> /batches/{id}。
+ */
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getBatchPage } from '../api/batchApi'
@@ -107,6 +124,7 @@ const page = reactive({
 
 const statusOptions = ['CREATED', 'INSPECTING', 'NCR_OPEN', 'CAPA_OPEN', 'CLOSED']
 
+// 将后端状态映射为 Element Plus 标签类型，只影响展示颜色，不改变状态值。
 function statusTagType(status) {
   const typeMap = {
     CREATED: 'info',
@@ -118,6 +136,7 @@ function statusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 从 production_batch 分页接口读取数据，结果直接驱动表格和分页器。
 async function fetchBatches() {
   loading.value = true
   try {
@@ -134,17 +153,20 @@ async function fetchBatches() {
   }
 }
 
+// 查询时回到第一页，避免旧页码在过滤后越界。
 function handleSearch() {
   page.pageNo = 1
   fetchBatches()
 }
 
+// 清空筛选条件后重新加载列表。
 function resetSearch() {
   query.batchNo = ''
   query.status = ''
   handleSearch()
 }
 
+// 跳转到批次详情页，详情页会通过 route.params.id 查询批次和任务。
 function goDetail(id) {
   router.push(`/batches/${id}`)
 }
@@ -153,12 +175,14 @@ onMounted(fetchBatches)
 </script>
 
 <style scoped>
+/* 分页区域：与批次表格右侧对齐，驱动 pageNo/pageSize 查询。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* 小屏处理：分页器允许横向滚动，避免控件挤出页面。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

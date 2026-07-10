@@ -1,18 +1,26 @@
 services:
   mysql:
+    # MySQL 服务：为后端 application.yml 中的 visual_qms 数据库提供本地开发实例。
     image: mysql:8.0
     container_name: visual-qms-mysql
     ports:
+      # 宿主机 3306 -> 容器 3306，后端 JDBC URL 使用 localhost:3306。
       - "3306:3306"
     environment:
+      # 容器初始化 root 密码；后端运行时仍通过 MYSQL_PASSWORD 环境变量读取，不应写入 application.yml。
       MYSQL_ROOT_PASSWORD: visual_qms_password
+      # 容器首次创建数据目录时自动创建 visual_qms 数据库。
       MYSQL_DATABASE: visual_qms
     command:
+      # 保证中文注释和样例数据使用 utf8mb4。
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_0900_ai_ci
     volumes:
+      # named volume 保存数据库数据；docker compose down 不会删除，down -v 会删除并重新执行初始化 SQL。
       - mysql_data:/var/lib/mysql
+      # 初始化 SQL 目录；容器首次创建数据目录时按文件名顺序执行。
       - ./docker/mysql/init:/docker-entrypoint-initdb.d
 
 volumes:
+  # MySQL 数据持久化卷。
   mysql_data:

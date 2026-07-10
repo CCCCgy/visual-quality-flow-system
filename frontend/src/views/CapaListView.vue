@@ -198,6 +198,25 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * CAPA 整改闭环列表页，展示 capa_record，支持编辑措施和状态推进。
+ *
+ * 路由入口：
+ * /capas。
+ *
+ * 调用的前端 API：
+ * getCapaPage、updateCapa、updateCapaStatus。
+ *
+ * 对应后端接口：
+ * GET /api/capas -> CapaRecordController#pageCapas；
+ * PUT /api/capas/{id} -> CapaRecordController#updateCapa；
+ * PATCH /api/capas/{id}/status -> CapaRecordController#updateCapaStatus。
+ *
+ * 主要交互流程：
+ * 查询 CAPA -> 非终态行可编辑、待验证、关闭或取消；
+ * 关闭 CAPA 后后端会同步关闭 capa_record、ncr_record 和 production_batch，页面刷新展示最终状态。
+ */
 import { reactive, ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getCapaPage, updateCapa, updateCapaStatus } from '../api/capaApi'
@@ -246,6 +265,7 @@ const editRules = {
   ]
 }
 
+// CAPA 状态展示色，与后端状态枚举保持一致。
 function capaStatusTagType(status) {
   const typeMap = {
     PENDING_ANALYSIS: 'info',
@@ -257,10 +277,12 @@ function capaStatusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// CLOSED/CANCELLED 是终态，页面不再显示编辑和状态按钮。
 function isTerminal(status) {
   return status === 'CLOSED' || status === 'CANCELLED'
 }
 
+// 查询 capa_record 分页数据。
 async function fetchCapas() {
   loading.value = true
   try {
@@ -280,11 +302,13 @@ async function fetchCapas() {
   }
 }
 
+// 查询时回到第一页。
 function handleSearch() {
   page.pageNo = 1
   fetchCapas()
 }
 
+// 清空筛选条件并重新查询。
 function resetSearch() {
   query.capaNo = ''
   query.ncrId = ''
@@ -294,6 +318,7 @@ function resetSearch() {
   handleSearch()
 }
 
+// 打开编辑弹窗，把当前行数据复制到表单，避免未保存输入直接改动表格行。
 function openEditDialog(row) {
   editForm.id = row.id
   editForm.rootCause = row.rootCause || ''
@@ -304,6 +329,7 @@ function openEditDialog(row) {
   editDialogVisible.value = true
 }
 
+// 保存 CAPA 内容；成功后重新查询，让 updatedTime 和表格内容与后端一致。
 async function submitEdit() {
   await editFormRef.value?.validate()
   editSubmitting.value = true
@@ -323,6 +349,7 @@ async function submitEdit() {
   }
 }
 
+// 推进 CAPA 状态；当 status=CLOSED 时，后端会在事务中同步关闭 NCR 和批次。
 async function changeCapaStatus(row, status) {
   const actionTextMap = {
     PENDING_VERIFY: '更新为待验证',
@@ -346,17 +373,20 @@ onMounted(fetchCapas)
 </script>
 
 <style scoped>
+/* 分页区域：控制 capa_record 分页查询。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* CLOSED/CANCELLED 终态 CAPA 不再允许编辑或状态推进。 */
 .muted-action {
   color: #94a3b8;
   font-size: 13px;
 }
 
+/* 小屏处理：分页器可横向滚动。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

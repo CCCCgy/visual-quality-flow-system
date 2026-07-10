@@ -194,6 +194,24 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 检测结果列表页，展示 detection_result 分页数据，并提供人工复核入口。
+ *
+ * 路由入口：
+ * /detections，可带 query.taskId；BatchDetailView 和 InspectionTaskListView 会这样跳转。
+ *
+ * 调用的前端 API：
+ * getDetectionResultPage、createReview。
+ *
+ * 对应后端接口：
+ * GET /api/detections -> DetectionController#pageDetectionResults；
+ * POST /api/reviews -> ReviewRecordController#createReview。
+ *
+ * 主要交互流程：
+ * route.query.taskId -> query.taskId -> fetchDetections；
+ * PENDING_REVIEW 行点击人工复核 -> createReview -> 后端写 review_record 并同步 detection_result.status -> 刷新列表。
+ */
 import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getDetectionResultPage } from '../api/detectionApi'
@@ -251,6 +269,7 @@ const reviewRules = {
   ]
 }
 
+// 检测结果状态展示色；PENDING_REVIEW 才允许打开复核弹窗。
 function statusTagType(status) {
   const typeMap = {
     PENDING_REVIEW: 'warning',
@@ -261,6 +280,7 @@ function statusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// bbox 坐标展示格式化，空值显示为 -。
 function formatNumber(value) {
   if (value === null || typeof value === 'undefined') {
     return '-'
@@ -268,6 +288,7 @@ function formatNumber(value) {
   return Number(value).toFixed(2)
 }
 
+// 置信度展示格式化，保留四位小数便于人工判断。
 function formatConfidence(value) {
   if (value === null || typeof value === 'undefined') {
     return '-'
@@ -275,6 +296,7 @@ function formatConfidence(value) {
   return Number(value).toFixed(4)
 }
 
+// 查询 detection_result 分页数据，筛选条件为空时不传给后端。
 async function fetchDetections() {
   loading.value = true
   try {
@@ -293,20 +315,24 @@ async function fetchDetections() {
   }
 }
 
+// 从路由 query 中读取 taskId，用于从批次/任务页面跳转后自动过滤。
 function applyRouteQuery() {
   query.taskId = route.query.taskId ? String(route.query.taskId) : ''
 }
 
+// 手动查询时重置页码。
 function handleSearch() {
   page.pageNo = 1
   fetchDetections()
 }
 
+// 快速设置状态筛选为 PENDING_REVIEW，聚焦待人工复核结果。
 function showPendingOnly() {
   query.status = 'PENDING_REVIEW'
   handleSearch()
 }
 
+// 清空所有筛选条件并重新加载。
 function resetSearch() {
   query.taskId = ''
   query.imageId = ''
@@ -315,10 +341,12 @@ function resetSearch() {
   handleSearch()
 }
 
+// 跳转到视觉详情页，route.params.id 对应 detection_result.id。
 function goDetail(row) {
   router.push(`/detections/${row.id}`)
 }
 
+// 打开人工复核弹窗，并把当前检测结果的关键信息带入只读字段。
 function openReviewDialog(row) {
   reviewForm.detectionResultId = row.id
   reviewForm.className = row.className
@@ -329,6 +357,7 @@ function openReviewDialog(row) {
   reviewDialogVisible.value = true
 }
 
+// 提交人工复核；成功后重新拉取列表，使状态从 PENDING_REVIEW 刷新为人工结论。
 async function submitReview() {
   await reviewFormRef.value?.validate()
   reviewSubmitting.value = true
@@ -361,17 +390,20 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 分页区域：控制 detection_result 分页查询。 */
 .pagination {
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
 }
 
+/* 已复核提示：替代人工复核按钮，说明该行不能重复复核。 */
 .muted-action {
   color: #94a3b8;
   font-size: 13px;
 }
 
+/* 小屏处理：分页器可横向滚动。 */
 @media (max-width: 760px) {
   .pagination {
     justify-content: flex-start;

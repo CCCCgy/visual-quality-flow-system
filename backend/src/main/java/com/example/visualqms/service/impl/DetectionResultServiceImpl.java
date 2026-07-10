@@ -18,6 +18,26 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+/**
+ * 文件职责：
+ * 实现检测结果查询和视觉详情查询。
+ *
+ * 所属层级：
+ * ServiceImpl。
+ *
+ * 上游调用：
+ * DetectionController。
+ *
+ * 下游依赖：
+ * DetectionResultMapper 访问 detection_result；InspectionImageMapper 访问 inspection_image。
+ *
+ * 主要业务链路：
+ * DetectionResultDetailView.vue -> detectionApi.js -> DetectionController
+ * -> DetectionResultServiceImpl -> detection_result / inspection_image -> DetectionVisualDetailVO。
+ *
+ * 注意事项：
+ * 本类只读检测结果；检测结果状态写入由 ReviewRecordServiceImpl 在人工复核事务中完成。
+ */
 @Service
 public class DetectionResultServiceImpl
         extends ServiceImpl<DetectionResultMapper, DetectionResult>
@@ -36,6 +56,12 @@ public class DetectionResultServiceImpl
         this.inspectionImageMapper = inspectionImageMapper;
     }
 
+    /**
+     * 分页查询检测结果。
+     *
+     * 查询数据：
+     * detection_result，可按 taskId、imageId、className 和 status 过滤。
+     */
     @Override
     public PageResult<DetectionResultVO> pageDetectionResults(
             Long taskId,
@@ -64,11 +90,24 @@ public class DetectionResultServiceImpl
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
     }
 
+    /**
+     * 查询检测结果基础详情。
+     */
     @Override
     public DetectionResultVO getDetectionResultDetail(Long id) {
         return toVO(getExistingDetectionResult(id));
     }
 
+    /**
+     * 查询视觉详情。
+     *
+     * 查询数据：
+     * 先查 detection_result，再通过 imageId 查 inspection_image。
+     *
+     * 输出数据：
+     * DetectionVisualDetailVO 合并检测类别、置信度、bbox 坐标、状态与图片名称/URI。
+     * 前端根据 bboxX1/bboxY1/bboxX2/bboxY2 在图片上绘制矩形框。
+     */
     @Override
     public DetectionVisualDetailVO getDetectionVisualDetail(Long id) {
         DetectionResult detectionResult = getExistingDetectionResult(id);
@@ -84,12 +123,18 @@ public class DetectionResultServiceImpl
         return vo;
     }
 
+    /**
+     * 校验检测结果状态枚举。
+     */
     private void validateStatus(String status) {
         if (!ALLOWED_STATUS.contains(status)) {
             throw new BizException(400, "invalid detection result status");
         }
     }
 
+    /**
+     * 获取已存在检测结果。
+     */
     private DetectionResult getExistingDetectionResult(Long id) {
         DetectionResult detectionResult = getById(id);
         if (detectionResult == null) {
@@ -98,6 +143,9 @@ public class DetectionResultServiceImpl
         return detectionResult;
     }
 
+    /**
+     * Entity 转 VO，避免暴露持久化对象。
+     */
     private DetectionResultVO toVO(DetectionResult detectionResult) {
         DetectionResultVO vo = new DetectionResultVO();
         BeanUtils.copyProperties(detectionResult, vo);

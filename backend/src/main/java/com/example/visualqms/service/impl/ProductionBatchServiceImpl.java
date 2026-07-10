@@ -18,6 +18,26 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+/**
+ * 文件职责：
+ * 实现生产批次的业务规则，包括批次编号唯一性、分页查询、详情、非状态字段更新和状态更新。
+ *
+ * 所属层级：
+ * ServiceImpl。
+ *
+ * 上游调用：
+ * ProductionBatchController。
+ *
+ * 下游依赖：
+ * 继承 MyBatis-Plus ServiceImpl，内部通过 ProductionBatchMapper 访问 production_batch 表。
+ *
+ * 主要业务链路：
+ * BatchListView.vue -> batchApi.js -> ProductionBatchController -> ProductionBatchService
+ * -> ProductionBatchServiceImpl -> ProductionBatchMapper -> production_batch。
+ *
+ * 注意事项：
+ * 批次状态也会被 NCR/CAPA 流程跨服务更新；本类只处理批次自身接口发起的状态限制。
+ */
 @Service
 public class ProductionBatchServiceImpl
         extends ServiceImpl<ProductionBatchMapper, ProductionBatch>
@@ -33,6 +53,21 @@ public class ProductionBatchServiceImpl
             "CLOSED"
     );
 
+    /**
+     * 创建生产批次。
+     *
+     * 前置条件：
+     * batchNo 不能与 production_batch 中已有记录重复。
+     *
+     * 写入数据：
+     * 新增 production_batch，默认 status=CREATED。
+     *
+     * 状态变化：
+     * 无旧状态，新批次从 CREATED 开始，后续可由检测、NCR、CAPA 链路推进。
+     *
+     * @param dto 批次创建参数
+     * @return 创建后的 VO，重新查询是为了带出数据库生成的 id 和时间字段
+     */
     @Override
     public ProductionBatchVO createBatch(ProductionBatchCreateDTO dto) {
         validateBatchNoUnique(dto.getBatchNo());
@@ -50,6 +85,14 @@ public class ProductionBatchServiceImpl
         return toVO(getById(batch.getId()));
     }
 
+    /**
+     * 分页查询批次列表。
+     *
+     * 查询数据：
+     * 访问 production_batch，并按 batchNo 模糊匹配、status 精确过滤。
+     *
+     * @return PageResult 供前端 el-table 与 el-pagination 使用
+     */
     @Override
     public PageResult<ProductionBatchVO> pageBatches(String batchNo, String status, Long pageNo, Long pageSize) {
         if (StringUtils.hasText(status)) {
@@ -70,11 +113,26 @@ public class ProductionBatchServiceImpl
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
     }
 
+    /**
+     * 查询批次详情。
+     *
+     * 查询数据：
+     * 根据 production_batch.id 获取单条批次，不存在时抛出 BizException。
+     */
     @Override
     public ProductionBatchVO getBatchDetail(Long id) {
         return toVO(getExistingBatch(id));
     }
 
+    /**
+     * 更新批次非状态字段。
+     *
+     * 前置条件：
+     * CLOSED 批次不可修改，避免质量闭环结束后再改变批次基础信息。
+     *
+     * 写入数据：
+     * 仅更新调用方明确传入的字段，不触碰 batchNo、status 和时间字段。
+     */
     @Override
     public ProductionBatchVO updateBatch(Long id, ProductionBatchUpdateDTO dto) {
         ProductionBatch batch = getExistingBatch(id);
@@ -108,6 +166,15 @@ public class ProductionBatchServiceImpl
         return toVO(getById(id));
     }
 
+    /**
+     * 更新批次状态。
+     *
+     * 状态限制：
+     * 目标状态必须在 ALLOWED_STATUS 内；已 CLOSED 的批次不能切换回其他状态。
+     *
+     * 写入数据：
+     * 更新 production_batch.status。
+     */
     @Override
     public ProductionBatchVO updateBatchStatus(Long id, ProductionBatchStatusUpdateDTO dto) {
         ProductionBatch batch = getExistingBatch(id);
@@ -125,6 +192,9 @@ public class ProductionBatchServiceImpl
         return toVO(getById(id));
     }
 
+    /**
+     * 校验批次编号唯一性，对应 production_batch.uk_production_batch_batch_no。
+     */
     private void validateBatchNoUnique(String batchNo) {
         LambdaQueryWrapper<ProductionBatch> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(ProductionBatch::getBatchNo, batchNo);
@@ -133,6 +203,9 @@ public class ProductionBatchServiceImpl
         }
     }
 
+    /**
+     * 统一封装批次存在性校验，让调用方不用重复处理空记录。
+     */
     private ProductionBatch getExistingBatch(Long id) {
         ProductionBatch batch = getById(id);
         if (batch == null) {
@@ -141,12 +214,18 @@ public class ProductionBatchServiceImpl
         return batch;
     }
 
+    /**
+     * 校验批次状态是否属于系统允许的状态集合。
+     */
     private void validateStatus(String status) {
         if (!ALLOWED_STATUS.contains(status)) {
             throw new BizException(400, "invalid production batch status");
         }
     }
 
+    /**
+     * Entity 转 VO：避免 Controller 直接暴露持久化对象。
+     */
     private ProductionBatchVO toVO(ProductionBatch batch) {
         ProductionBatchVO vo = new ProductionBatchVO();
         BeanUtils.copyProperties(batch, vo);

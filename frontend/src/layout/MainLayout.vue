@@ -43,11 +43,28 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 提供应用主布局：左侧菜单、顶部标题和右侧主内容区。
+ *
+ * 路由入口：
+ * router/index.js 的根路由使用 MainLayout，子路由页面渲染到本组件的内部 router-view。
+ *
+ * 调用的前端 API：
+ * 无。布局只负责导航和页面容器。
+ *
+ * 对应后端接口：
+ * 无直接对应接口。
+ *
+ * 主要交互流程：
+ * 用户点击 el-menu 菜单项 -> Element Plus router 模式触发路由切换 -> router-view 渲染对应页面。
+ */
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 const route = useRoute()
 
+// 根据当前 URL 前缀保持侧边栏高亮；详情页也会高亮所属一级菜单。
 const activePath = computed(() => {
   if (route.path.startsWith('/batches')) {
     return '/batches'
@@ -72,16 +89,19 @@ const activePath = computed(() => {
 </script>
 
 <style scoped>
+/* 应用外壳：左侧菜单和右侧主内容的全屏布局。 */
 .app-shell {
   min-height: 100vh;
   background: #f5f7fb;
 }
 
+/* 左侧导航栏：固定深色背景，承载品牌和路由菜单。 */
 .sidebar {
   min-height: 100vh;
   background: #172033;
 }
 
+/* 品牌区域：显示系统缩写与原型说明。 */
 .brand {
   display: flex;
   align-items: center;
@@ -119,6 +139,7 @@ const activePath = computed(() => {
   border-right: 0;
 }
 
+/* 顶部栏：展示系统名称和当前原型说明，不承载业务操作。 */
 .topbar {
   display: flex;
   align-items: center;
@@ -142,10 +163,12 @@ const activePath = computed(() => {
   font-size: 13px;
 }
 
+/* 主内容区：所有子路由页面通过 router-view 渲染到这里。 */
 .main-content {
   padding: 24px;
 }
 
+/* 移动端布局：侧边栏改为顶部区域，内容留出更小边距。 */
 @media (max-width: 760px) {
   .app-shell {
     display: block;

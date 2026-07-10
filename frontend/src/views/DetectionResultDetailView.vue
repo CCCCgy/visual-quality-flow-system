@@ -154,6 +154,25 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 检测结果视觉详情页，展示图片、bbox 红框和人工复核入口。
+ *
+ * 路由入口：
+ * /detections/:id，其中 id 是 detection_result.id。
+ *
+ * 调用的前端 API：
+ * getDetectionVisualDetail、createReview。
+ *
+ * 对应后端接口：
+ * GET /api/detections/{id}/visual-detail -> DetectionController#getDetectionVisualDetail；
+ * POST /api/reviews -> ReviewRecordController#createReview。
+ *
+ * 主要交互流程：
+ * route.params.id -> visual-detail 接口 -> detail；
+ * bboxX1/bboxY1/bboxX2/bboxY2 按 1280x960 逻辑画布换算为百分比；
+ * 复核成功后重新 fetchDetail，让状态和按钮可见性同步更新。
+ */
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
@@ -196,6 +215,7 @@ const reviewRules = {
   ]
 }
 
+// 将后端 bbox 坐标转换为前端可绘制的矩形，并裁剪到逻辑画布范围内。
 const bbox = computed(() => {
   const x1 = toNumber(detail.value.bboxX1)
   const y1 = toNumber(detail.value.bboxY1)
@@ -219,6 +239,7 @@ const bbox = computed(() => {
 
 const hasValidBbox = computed(() => Boolean(bbox.value))
 
+// 用于详情区域展示原始 bbox 坐标。
 const bboxText = computed(() => {
   if (!hasValidBbox.value) {
     return '-'
@@ -231,6 +252,7 @@ const bboxText = computed(() => {
   ].join(', ')
 })
 
+// 将逻辑坐标转换为百分比，适配响应式图片容器缩放。
 const bboxStyle = computed(() => ({
   left: `${(bbox.value.left / LOGICAL_WIDTH) * 100}%`,
   top: `${(bbox.value.top / LOGICAL_HEIGHT) * 100}%`,
@@ -238,6 +260,7 @@ const bboxStyle = computed(() => ({
   height: `${(bbox.value.height / LOGICAL_HEIGHT) * 100}%`
 }))
 
+// 标签放在 bbox 上方，并限制在画布可视范围内。
 const bboxLabelStyle = computed(() => {
   const left = (bbox.value.left / LOGICAL_WIDTH) * 100
   const top = (bbox.value.top / LOGICAL_HEIGHT) * 100
@@ -247,6 +270,7 @@ const bboxLabelStyle = computed(() => {
   }
 })
 
+// 查询 detection_result 与 inspection_image 合并后的视觉详情。
 async function fetchDetail() {
   loading.value = true
   try {
@@ -256,6 +280,7 @@ async function fetchDetail() {
   }
 }
 
+// 打开复核弹窗，只允许当前状态仍为 PENDING_REVIEW 时由模板显示入口。
 function openReviewDialog() {
   reviewForm.detectionResultId = detail.value.id
   reviewForm.className = detail.value.className
@@ -266,6 +291,7 @@ function openReviewDialog() {
   reviewDialogVisible.value = true
 }
 
+// 提交复核后刷新详情，使 detection_result.status 与按钮状态同步。
 async function submitReview() {
   await reviewFormRef.value?.validate()
   reviewSubmitting.value = true
@@ -284,10 +310,12 @@ async function submitReview() {
   }
 }
 
+// 返回检测结果列表。
 function goBack() {
   router.push('/detections')
 }
 
+// 检测结果状态展示色。
 function statusTagType(status) {
   const typeMap = {
     PENDING_REVIEW: 'warning',
@@ -298,6 +326,7 @@ function statusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 数字格式化，避免空值在页面上显示为 NaN。
 function formatNumber(value) {
   if (value === null || typeof value === 'undefined') {
     return '-'
@@ -305,6 +334,7 @@ function formatNumber(value) {
   return Number(value).toFixed(2)
 }
 
+// 置信度格式化。
 function formatConfidence(value) {
   if (value === null || typeof value === 'undefined') {
     return '-'
@@ -312,6 +342,7 @@ function formatConfidence(value) {
   return Number(value).toFixed(4)
 }
 
+// 把后端可能返回的字符串数字转换为 Number。
 function toNumber(value) {
   if (value === null || typeof value === 'undefined' || value === '') {
     return null
@@ -320,6 +351,7 @@ function toNumber(value) {
   return Number.isFinite(number) ? number : null
 }
 
+// 将 bbox 坐标限制在逻辑画布内，避免框绘制到图片外。
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max)
 }
@@ -328,6 +360,7 @@ onMounted(fetchDetail)
 </script>
 
 <style scoped>
+/* 详情页面布局：基础信息和图片可视化上下排列。 */
 .detail-layout {
   display: flex;
   flex-direction: column;
@@ -341,6 +374,7 @@ onMounted(fetchDetail)
   font-weight: 650;
 }
 
+/* 视觉区域头部：左侧标题说明，右侧在待复核时显示人工复核按钮。 */
 .visual-header {
   display: flex;
   align-items: flex-start;
@@ -354,6 +388,7 @@ onMounted(fetchDetail)
   font-size: 13px;
 }
 
+/* 图片舞台：提供边框、背景和横向滚动，容纳 bbox 叠加画布。 */
 .image-stage {
   position: relative;
   display: flex;
@@ -365,6 +400,7 @@ onMounted(fetchDetail)
   background: #f8fafc;
 }
 
+/* bbox 画布：保持 4:3 比例，与 1280x960 逻辑坐标一致。 */
 .image-canvas {
   position: relative;
   width: min(100%, 960px);
@@ -375,6 +411,7 @@ onMounted(fetchDetail)
   background: #ffffff;
 }
 
+/* 演示图片：当前使用 public/demo-images 下的 SVG 作为可视化底图。 */
 .demo-image {
   display: block;
   width: 100%;
@@ -382,6 +419,7 @@ onMounted(fetchDetail)
   object-fit: cover;
 }
 
+/* bbox 红框：位置和尺寸由后端 bbox 坐标换算出的百分比控制。 */
 .bbox {
   position: absolute;
   border: 3px solid #f56c6c;
@@ -389,6 +427,7 @@ onMounted(fetchDetail)
   pointer-events: none;
 }
 
+/* bbox 标签：显示 className 和 confidence，跟随 bbox 左上方定位。 */
 .bbox-label {
   position: absolute;
   max-width: 180px;
@@ -403,12 +442,14 @@ onMounted(fetchDetail)
   word-break: break-word;
 }
 
+/* 无有效 bbox 时的覆盖提示。 */
 .bbox-empty {
   position: absolute;
   inset: 0;
   background: rgba(248, 250, 252, 0.78);
 }
 
+/* 小屏处理：视觉区按钮和标题上下排列，减少画布外边距。 */
 @media (max-width: 760px) {
   .visual-header {
     flex-direction: column;

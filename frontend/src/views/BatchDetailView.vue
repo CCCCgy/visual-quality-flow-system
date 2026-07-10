@@ -86,6 +86,24 @@
 </template>
 
 <script setup>
+/**
+ * 页面或模块职责：
+ * 批次详情页，展示单个 production_batch，并列出该批次下的 inspection_task。
+ *
+ * 路由入口：
+ * /batches/:id，其中 id 是 production_batch.id。
+ *
+ * 调用的前端 API：
+ * getBatchDetail、getInspectionTasksByBatch。
+ *
+ * 对应后端接口：
+ * GET /api/batches/{id} -> ProductionBatchController#getBatchDetail；
+ * GET /api/inspection-tasks/by-batch/{batchId} -> InspectionTaskController#listTasksByBatch。
+ *
+ * 主要交互流程：
+ * 读取 route.params.id -> 同时查询批次详情和任务列表；
+ * 点击任务“查看检测结果” -> /detections?taskId={taskId}。
+ */
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getBatchDetail } from '../api/batchApi'
@@ -98,6 +116,7 @@ const tasksLoading = ref(false)
 const detail = ref({})
 const tasks = ref([])
 
+// 批次状态颜色映射，仅用于展示。
 function statusTagType(status) {
   const typeMap = {
     CREATED: 'info',
@@ -109,6 +128,7 @@ function statusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 任务状态颜色映射，与后端 inspection_task.status 保持同名。
 function taskStatusTagType(status) {
   const typeMap = {
     CREATED: 'info',
@@ -120,6 +140,7 @@ function taskStatusTagType(status) {
   return typeMap[status] || 'info'
 }
 
+// 按 route.params.id 获取 production_batch 详情。
 async function fetchDetail() {
   loading.value = true
   try {
@@ -129,6 +150,7 @@ async function fetchDetail() {
   }
 }
 
+// 按当前 batchId 查询 inspection_task 列表，支撑从批次追溯到检测结果。
 async function fetchTasks() {
   tasksLoading.value = true
   try {
@@ -138,10 +160,12 @@ async function fetchTasks() {
   }
 }
 
+// 返回批次列表路由。
 function goBack() {
   router.push('/batches')
 }
 
+// 将任务 ID 放入 query，检测结果列表会读取 route.query.taskId 自动筛选。
 function goDetections(taskId) {
   router.push({
     path: '/detections',
@@ -156,14 +180,17 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* 批次详情描述区域：限制最大宽度，让字段阅读更稳定。 */
 .batch-descriptions {
   max-width: 980px;
 }
 
+/* 任务列表面板：与上方批次详情形成清晰间隔。 */
 .task-panel {
   margin-top: 16px;
 }
 
+/* 小节标题：用于说明从批次追溯到检测任务的关系。 */
 .section-header {
   margin-bottom: 14px;
 }
@@ -181,6 +208,7 @@ onMounted(() => {
   font-size: 13px;
 }
 
+/* 小屏处理：Element Plus 描述表格改为块级流式展示。 */
 @media (max-width: 760px) {
   :deep(.el-descriptions__body .el-descriptions__table) {
     display: block;

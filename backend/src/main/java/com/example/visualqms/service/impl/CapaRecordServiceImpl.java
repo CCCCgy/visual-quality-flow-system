@@ -24,6 +24,26 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 文件职责：
+ * 实现 CAPA 整改闭环业务，包括从 OPEN NCR 创建 CAPA、编辑措施、状态推进和关闭联动。
+ *
+ * 所属层级：
+ * ServiceImpl。
+ *
+ * 上游调用：
+ * CapaRecordController。
+ *
+ * 下游依赖：
+ * CapaRecordMapper、NcrRecordMapper、ProductionBatchMapper，最终访问 capa_record、ncr_record、production_batch。
+ *
+ * 主要业务链路：
+ * NcrListView.vue 或 CapaListView.vue -> capaApi.js -> CapaRecordController
+ * -> CapaRecordServiceImpl -> capa_record / ncr_record / production_batch。
+ *
+ * 注意事项：
+ * CAPA 关闭时需要同时关闭 NCR 和生产批次，保证质量问题、整改措施和批次状态一致。
+ */
 @Service
 public class CapaRecordServiceImpl
         extends ServiceImpl<CapaRecordMapper, CapaRecord>
@@ -57,6 +77,22 @@ public class CapaRecordServiceImpl
         this.productionBatchMapper = productionBatchMapper;
     }
 
+    /**
+     * 创建 CAPA。
+     *
+     * 前置条件：
+     * capaNo 唯一；ownerId 必须存在于 sys_user；
+     * ncr_record 必须存在且状态为 OPEN；
+     * 同一 NCR 只能对应一条 CAPA。
+     *
+     * 写入数据：
+     * 新增 capa_record，当前实现默认 status=IN_PROGRESS；
+     * 更新 ncr_record.status=CAPA_CREATED；
+     * 更新 production_batch.status=CAPA_OPEN。
+     *
+     * 事务说明：
+     * 三张表代表同一质量闭环的不同阶段，任一更新失败都应整体回滚。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CapaRecordVO createCapa(CapaCreateDTO dto) {
@@ -95,6 +131,9 @@ public class CapaRecordServiceImpl
         return toVO(getById(capaRecord.getId()));
     }
 
+    /**
+     * 分页查询 CAPA，供 CapaListView 展示和筛选。
+     */
     @Override
     public PageResult<CapaRecordVO> pageCapas(
             String capaNo,
@@ -125,11 +164,17 @@ public class CapaRecordServiceImpl
         return PageResult.of(page.getTotal(), page.getCurrent(), page.getSize(), records);
     }
 
+    /**
+     * 查询 CAPA 详情。
+     */
     @Override
     public CapaRecordVO getCapaDetail(Long id) {
         return toVO(getExistingCapaRecord(id));
     }
 
+    /**
+     * 根据 NCR 查询 CAPA，用于判断同一 ncr_record 是否已有整改记录。
+     */
     @Override
     public CapaRecordVO getCapaByNcr(Long ncrId) {
         getExistingNcrRecord(ncrId);
@@ -140,6 +185,15 @@ public class CapaRecordServiceImpl
         return capaRecord == null ? null : toVO(capaRecord);
     }
 
+    /**
+     * 编辑 CAPA 内容。
+     *
+     * 前置条件：
+     * CLOSED/CANCELLED 终态 CAPA 不能再修改措施内容。
+     *
+     * 写入数据：
+     * 只更新请求中非 null 的根因、纠正措施、预防措施、验证结果和 dueDate。
+     */
     @Override
     public CapaRecordVO updateCapa(Long id, CapaUpdateDTO dto) {
         CapaRecord capaRecord = getExistingCapaRecord(id);
@@ -169,6 +223,19 @@ public class CapaRecordServiceImpl
         return toVO(getById(id));
     }
 
+    /**
+     * 更新 CAPA 状态。
+     *
+     * 状态限制：
+     * 目标状态必须合法；CLOSED/CANCELLED 终态不能切换到其他状态。
+     *
+     * 写入数据：
+     * 更新 capa_record.status；首次关闭时写入 capa_record.closed_time。
+     * 当目标状态为 CLOSED 时，同步关闭 ncr_record 并把 production_batch 置为 CLOSED。
+     *
+     * 事务说明：
+     * 关闭 CAPA 是闭环终点，三张表必须同时成功；中间一步失败会整体回滚。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public CapaRecordVO updateCapaStatus(Long id, CapaStatusUpdateDTO dto) {
@@ -196,6 +263,14 @@ public class CapaRecordServiceImpl
         return toVO(getById(id));
     }
 
+    /**
+     * 关闭 CAPA 后联动关闭 NCR 和批次。
+     *
+     * 状态变化：
+     * ncr_record.status -> CLOSED，并写入 closed_time；
+     * production_batch.status -> CLOSED；
+     * closedTime 由 updateCapaStatus 统一生成，保证 CAPA 和 NCR 关闭时间一致。
+     */
     private void closeNcrAndBatch(CapaRecord capaRecord, LocalDateTime closedTime) {
         NcrRecord ncrRecord = getExistingNcrRecord(capaRecord.getNcrId());
         getExistingProductionBatch(capaRecord.getBatchId());
@@ -212,6 +287,9 @@ public class CapaRecordServiceImpl
         productionBatchMapper.updateById(updateBatch);
     }
 
+    /**
+     * 校验 CAPA 编号唯一性，对应 capa_record.uk_capa_record_capa_no。
+     */
     private void validateCapaNoUnique(String capaNo) {
         LambdaQueryWrapper<CapaRecord> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CapaRecord::getCapaNo, capaNo);
@@ -220,6 +298,9 @@ public class CapaRecordServiceImpl
         }
     }
 
+    /**
+     * 校验负责人存在性；当前通过 Mapper 自定义 SQL 查询 sys_user。
+     */
     private void validateOwnerExists(Long ownerId) {
         Long count = baseMapper.countSysUserById(ownerId);
         if (count == null || count == 0) {
@@ -227,6 +308,9 @@ public class CapaRecordServiceImpl
         }
     }
 
+    /**
+     * 防止同一 NCR 重复创建 CAPA，对应 capa_record.uk_capa_ncr_id。
+     */
     private void validateNcrNotLinkedToCapa(Long ncrId) {
         LambdaQueryWrapper<CapaRecord> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(CapaRecord::getNcrId, ncrId);
@@ -235,6 +319,9 @@ public class CapaRecordServiceImpl
         }
     }
 
+    /**
+     * 获取已存在 CAPA。
+     */
     private CapaRecord getExistingCapaRecord(Long id) {
         CapaRecord capaRecord = getById(id);
         if (capaRecord == null) {
@@ -243,6 +330,9 @@ public class CapaRecordServiceImpl
         return capaRecord;
     }
 
+    /**
+     * 获取已存在 NCR，CAPA 创建和关闭都需要依赖它。
+     */
     private NcrRecord getExistingNcrRecord(Long ncrId) {
         NcrRecord ncrRecord = ncrRecordMapper.selectById(ncrId);
         if (ncrRecord == null) {
@@ -251,6 +341,9 @@ public class CapaRecordServiceImpl
         return ncrRecord;
     }
 
+    /**
+     * 获取已存在批次，确保 CAPA_OPEN/CLOSED 状态同步有真实目标。
+     */
     private ProductionBatch getExistingProductionBatch(Long batchId) {
         ProductionBatch productionBatch = productionBatchMapper.selectById(batchId);
         if (productionBatch == null) {
@@ -259,16 +352,25 @@ public class CapaRecordServiceImpl
         return productionBatch;
     }
 
+    /**
+     * 校验 CAPA 状态枚举。
+     */
     private void validateStatus(String status) {
         if (!ALLOWED_STATUS.contains(status)) {
             throw new BizException(400, "invalid CAPA status");
         }
     }
 
+    /**
+     * 判断 CAPA 是否处于不可逆终态。
+     */
     private boolean isTerminalStatus(String status) {
         return CAPA_STATUS_CLOSED.equals(status) || CAPA_STATUS_CANCELLED.equals(status);
     }
 
+    /**
+     * Entity 转 VO，供 Controller 返回给前端。
+     */
     private CapaRecordVO toVO(CapaRecord capaRecord) {
         CapaRecordVO vo = new CapaRecordVO();
         BeanUtils.copyProperties(capaRecord, vo);

@@ -1,31 +1,46 @@
+# Spring Boot 应用配置：定义后端服务端口、应用名、数据库连接、MyBatis-Plus 与接口文档配置。
 server:
+  # 后端实际监听端口；前端开发代理若指向其他端口，需要与这里保持一致或由启动参数覆盖。
   port: 8080
 
 spring:
   application:
+    # 应用名用于日志和 Spring 上下文标识，不影响接口路径。
     name: visual-quality-flow-system
   datasource:
+    # MySQL JDBC 驱动；Mapper 最终通过该连接访问 visual_qms 库。
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # JDBC URL 指向本机 visual_qms，保留时区、编码和公钥获取参数。
     url: jdbc:mysql://localhost:3306/visual_qms?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    # 用户名优先读取 MYSQL_USERNAME，未设置时使用 root，方便本地和容器环境切换。
     username: ${MYSQL_USERNAME:root}
+    # 密码只从 MYSQL_PASSWORD 或空默认读取，不在配置文件写死真实密码。
     password: ${MYSQL_PASSWORD:}
     hikari:
+      # 允许应用启动时数据库暂不可用；真实查询仍会在访问接口时需要 MySQL 可连接。
       initialization-fail-timeout: 0
 
 mybatis-plus:
+  # 预留 XML Mapper 路径；当前 Mapper 主要使用注解和 BaseMapper。
   mapper-locations: classpath*:/mapper/**/*.xml
+  # Entity/VO/DTO 所在基础包，配合 MyBatis-Plus 类型扫描。
   type-aliases-package: com.example.visualqms
   configuration:
+    # 将数据库下划线字段映射到 Java 驼峰属性，例如 batch_no -> batchNo。
     map-underscore-to-camel-case: true
+    # 开发期输出 SQL，帮助理解 Mapper 实际访问的表和条件。
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
 knife4j:
+  # 启用 Knife4j/OpenAPI 文档展示。
   enable: true
   setting:
+    # 接口文档界面语言。
     language: zh_cn
 
 logging:
   level:
+    # 日志级别：业务包 debug 便于排查 Controller/Service 调用，框架保持 info。
     root: info
     com.example.visualqms: debug
     com.baomidou.mybatisplus: info
